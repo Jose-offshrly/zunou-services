@@ -38,9 +38,7 @@ class FetchGoogleCalendarEventsJob implements ShouldQueue
         foreach ($users as $user) {
             try {
                 // Initialize Google Calendar service
-                $googleCalendarService = new GoogleCalendarService(
-                    $user->google_calendar_refresh_token,
-                );
+                $googleCalendarService = new GoogleCalendarService($user);
 
                 // Calculate current week Monday to next week Sunday
                 $currentWeekStart = Carbon::now()
