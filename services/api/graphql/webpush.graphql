@@ -1,0 +1,6 @@
+input WebPushSubscriptionInput {
+    endpoint: String!
+    p256dh: String!
+    auth: String!
+    contentEncoding: String
+}

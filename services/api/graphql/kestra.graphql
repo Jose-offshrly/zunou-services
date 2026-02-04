@@ -1,0 +1,9 @@
+input CreateKestraMessageInput {
+    message: String!
+
+    organizationId: String!
+
+    threadId: String!
+
+    userId: String!
+}

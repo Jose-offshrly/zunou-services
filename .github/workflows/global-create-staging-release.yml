@@ -1,0 +1,45 @@
+name: global (create staging release)
+
+on:
+  workflow_dispatch:
+    inputs:
+      personal_token:
+        description: 'A repo-scoped personal access token to create the pull request with'
+        required:    true
+
+jobs:
+  create_pull_request:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+
+      - name: Generate the timestamp
+        run: echo "TIMESTAMP=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
+
+      - name: Generate the release name
+        run: echo "RELEASE_NAME=Staging Candidate ${{ env.TIMESTAMP }}" >> $GITHUB_ENV
+
+      - name: Generate the branch name
+        run: echo "BRANCH_NAME=staging-candidate-${{ env.TIMESTAMP }}" >> $GITHUB_ENV
+
+      - name: Reset the main branch
+        run: |
+          git fetch origin main:main
+          git reset --hard main
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          assignees:      ${{ github.actor }}
+          branch:         ${{ env.BRANCH_NAME }}
+          commit-message: 'build(global): staging release v${{ env.TIMESTAMP }}'
+          committer:      GitHub <noreply@github.com>
+          delete-branch:  false
+          draft:          false
+          labels:         please-review
+          title:          '${{ env.RELEASE_NAME }}'
+          token:          ${{ github.event.inputs.personal_token }}
+          body:           '${{ env.RELEASE_NAME }}'

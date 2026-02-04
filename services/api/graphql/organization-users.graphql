@@ -1,0 +1,129 @@
+"The status of the organization user."
+enum OrganizationUserStatus {
+    ACTIVE
+    INVITED
+}
+
+"The role of the user in the organization."
+enum OrganizationUserRole {
+    OWNER
+    USER
+    GUEST
+}
+
+"A user of a Zunou organization."
+type OrganizationUser {
+    "Timestamp when the organization user was created."
+    createdAt: DateTime
+
+    "Unique primary key."
+    id: UUID! @cacheKey
+
+    "The associated organization"
+    organization: Organization! @belongsTo
+
+    "The ID of the organization"
+    organizationId: UUID!
+
+    "The role of the user in the organization."
+    role: OrganizationUserRole! @cache(maxAge: 300, private: true)
+
+    "The invite status of the user"
+    status: OrganizationUserStatus! @cache(maxAge: 120, private: true)
+
+    "The associated user"
+    user: User! @belongsTo
+
+    "The ID of the user"
+    userId: UUID!
+
+    "The job title of the user"
+    jobTitle: String @cache(maxAge: 600, private: true)
+
+    "The department of the user"
+    department: String @cache(maxAge: 600, private: true)
+
+    "The profile of the user"
+    profile: String @cache(maxAge: 600, private: true)
+
+    "Timestamp when the organization was last updated."
+    updatedAt: DateTime
+
+    "The job description of the user"
+    jobDescription: String @cache(maxAge: 600, private: true)
+
+    "The responsibilities of the user"
+    responsibilities: [String] @cache(maxAge: 600, private: true)
+
+    "One to one pulse ID"
+    one_to_one: String
+        @field(resolver: "App\\GraphQL\\Queries\\OrganizationUserOneToOneQuery")
+        @cache(maxAge: 600, private: true)
+
+    "Whether this organization user is pinned by the current user"
+    isPinned: Boolean!
+        @field(resolver: "App\\GraphQL\\Queries\\OrganizationUserIsPinnedQuery")
+        @cache(maxAge: 120, private: true)
+}
+
+"Input for updating ogranizationUser."
+input UpdateOrganizationUserInput {
+    "The ID of the ogranizationUser to update"
+    organizationUserId: String! @rules(apply: ["min:36", "max:36", "required"])
+
+    "The ID of the user to update"
+    userId: ID @rules(apply: ["min:36", "max:36"])
+
+    "The job title of the organization user"
+    jobTitle: String
+
+    "The department of the organization user"
+    department: String
+
+    "The profile of the organization user"
+    profile: String
+
+    "The job description of the organization user"
+    jobDescription: String
+
+    "The responsibilities or the organization user"
+    responsibilities: [String]
+}
+
+input UpdateOrganizationUserRoleInput {
+    "ID of the org associated to the member."
+    organizationId: ID!
+
+    "ID of the user member."
+    userId: ID!
+
+    "The role for the user member."
+    role: OrganizationUserRole!
+}
+
+
+type GenerateJobDescriptionResponse {
+    "The generated job description"
+    jobDescription: String!
+
+    "The generated responsibilities"
+    responsibilities: [String]!
+}
+
+"Input for pinning an organization user"
+input PinOrganizationUserInput {
+    "The ID of the organization user to pin"
+    organizationUserId: ID!
+        @rules(apply: ["required", "exists:organization_users,id"])
+
+    "The ID of the organization"
+    organizationId: ID!
+        @rules(apply: ["required", "exists:organizations,id"])
+}
+
+"Input for unpinning an organization user"
+input UnpinOrganizationUserInput {
+    "The ID of the organization user to unpin"
+    organizationUserId: ID!
+        @rules(apply: ["required", "exists:organization_users,id"])
+}

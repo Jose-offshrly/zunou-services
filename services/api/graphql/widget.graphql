@@ -1,0 +1,25 @@
+type Widget {
+    id: ID!
+    userId: ID!
+    organizationId: ID!
+    name: String!
+    order: String!
+    columns: String!
+}
+
+input CreateWidgetInput {
+    userId: ID! @rules(apply: ["min: 36", "max: 36", "required"])
+    organizationId: ID! @rules(apply: ["min: 36", "max: 36", "required"])
+    name: String! @rules(apply: ["required", "max: 250"])
+}
+
+input UpdateWidgetInput {
+    widgetId: String! @rules(apply: ["min: 36", "max: 36", "required"])
+    name: String! @rules(apply: ["required", "max: 250"])
+    columns: String! @rules(apply: ["required"])
+}
+
+input WidgetOrderInput {
+    widgetId: String! @rules(apply: ["min: 36", "max: 36", "required"])
+    order: String! @rules(apply: ["required"])
+}

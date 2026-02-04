@@ -1,0 +1,45 @@
+"The AI Agent Type"
+enum AiAgentType @enum(class: "App\\Enums\\AiAgentType") {
+    GITHUB
+    SLACK
+    ZUNOU
+    JIRA
+}
+
+input CreateAiAgentInput {
+    pulseId: String!
+        @rename(attribute: "pulse_id")
+        @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+    organizationId: String!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required", "exists:organizations,id"])
+    description: String
+    name: String!
+    guidelines: String
+    agent_type: AiAgentType!
+    credentials: JSON!
+}
+
+input UpdateAiAgentInput {
+    id: ID!
+    guidelines: String
+    description: String
+    credentials: JSON
+    name: String!
+    organizationId: String!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required"])
+}
+
+type AiAgent {
+    id: ID!
+    pulseId: ID!
+    organizationId: ID!
+    name: String!
+    description: String
+    guidelines: String
+    agent_type: AiAgentType!
+    credentials: JSON!
+    created_at: DateTime!
+    updated_at: DateTime!
+}

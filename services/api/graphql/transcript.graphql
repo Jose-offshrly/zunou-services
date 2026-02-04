@@ -1,0 +1,9 @@
+"A Transcript resource"
+type Transcript {
+    id: ID!
+    meetingId: String!
+    content: String!
+    dataSourceId: String!
+    speakers: JSON
+    meeting: Meeting
+}

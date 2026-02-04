@@ -1,0 +1,29 @@
+"Input for creating a label."
+input CreateLabelInput @validator {
+    name: String!
+    pulse_id: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:pulses,id"
+        ])
+    color: String
+}
+
+"Input for updating a label."
+input UpdateLabelInput @validator {
+    id: ID!
+    name: String
+    pulse_id: ID!
+    color: String
+}
+
+"A label for categorizing entities."
+type Label {
+    id: ID!
+    name: String! @cache(maxAge: 300, private: true)
+    color: String @cache(maxAge: 300, private: true)
+    notes: [Note!]
+    pulse: Pulse @belongsTo
+}

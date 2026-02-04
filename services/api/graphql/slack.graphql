@@ -1,0 +1,8 @@
+"An access token for accessing Slack programatically."
+type SlackCredential {
+    "The ID of the organization that the credentials belong to."
+    organizationId: UUID!
+
+    "The Slack API access token."
+    slackAccessToken: String
+}

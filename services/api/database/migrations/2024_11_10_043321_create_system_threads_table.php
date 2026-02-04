@@ -1,0 +1,57 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class () extends Migration {
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('system_threads', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->string('task_type'); // e.g., 'gettingStarted'
+            $table->string('status')->default('pending');
+            $table->uuid('organization_id');
+            $table->uuid('user_id');
+            $table->uuid('pulse_id');
+            $table->uuid('parent_thread_id');
+            $table->timestamps();
+
+            // Define foreign key relationships with cascading deletes
+            $table
+                ->foreign('organization_id')
+                ->references('id')
+                ->on('organizations')
+                ->onDelete('cascade');
+
+            $table
+                ->foreign('pulse_id')
+                ->references('id')
+                ->on('pulses')
+                ->onDelete('cascade');
+
+            $table
+                ->foreign('user_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
+
+            $table
+                ->foreign('parent_thread_id')
+                ->references('id')
+                ->on('threads')
+                ->onDelete('cascade');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('system_threads');
+    }
+};

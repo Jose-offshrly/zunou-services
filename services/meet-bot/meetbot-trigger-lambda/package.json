@@ -1,0 +1,16 @@
+{
+  "name": "meetbot-trigger-lambda",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@aws-sdk/client-scheduler": "^3.787.0",
+    "amqplib": "^0.10.7"
+  }
+}

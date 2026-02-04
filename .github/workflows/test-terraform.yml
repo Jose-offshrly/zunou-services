@@ -1,0 +1,65 @@
+name: terraform (test)
+
+# Cancel in-progress jobs.
+concurrency:
+  group:              terraform-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    # Only run tests on pull requests.
+    branches-ignore:
+      - 'main'
+    paths:
+      - infrastructure/**
+      - .github/workflows/terraform-test.yml
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    outputs:
+      status: ${{ steps.changes.conclusion }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: dorny/paths-filter@v3
+      id: changes
+      with:
+        filters: |
+          terraform:
+            - infrastructure/**
+            - .github/workflows/terraform-test.yml
+
+    - name: Check service changed
+      if:  steps.changes.outputs.terraform == 'true'
+      run: echo "Service has changed - running CI" # exit_with_success
+
+  terraform:
+    runs-on: ubuntu-latest
+
+    needs: check
+    if:    needs.check.outputs.status == 'success'
+
+    # See https://docs.earthly.dev/ci-integration/vendor-specific-guides/gh-actions-integration
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      FORCE_COLOR: 1
+
+    defaults:
+      run:
+        working-directory: infrastructure
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Docker Login
+      run: docker login --username "$DOCKERHUB_USERNAME" --password "$DOCKERHUB_TOKEN"
+
+    - name: Download latest Earthly
+      run: "sudo /bin/sh -c 'wget https://github.com/earthly/earthly/releases/download/v0.6.14/earthly-linux-amd64 -O /usr/local/bin/earthly && chmod +x /usr/local/bin/earthly'"
+
+    - name: Lint
+      run: earthly --ci +lint

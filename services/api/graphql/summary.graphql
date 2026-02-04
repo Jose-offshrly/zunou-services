@@ -1,0 +1,59 @@
+"Input for creating summary options."
+input CreateSummaryOptionsInput {
+    "ID of the summary"
+    summaryId: String!
+
+    "ID of the thread to send the summary to"
+    threadId: String!
+}
+
+"Input for udpating summary"
+input updateSummaryOptionsInput {
+    "ID of the meeting to create a summary of"
+    summaryId: String!
+    summary: String!
+    name: String!
+}
+
+type TAssignee {
+    id: UUID
+    name: String!
+}
+
+type ActionItem {
+    title: String!
+    description: String
+    assignees: [TAssignee]
+    status: String
+    priority: String
+    due_date: String
+    is_existing: Boolean
+}
+
+type Summary {
+    id: UUID!
+    data_source_id: UUID!
+    summary: String!
+    date: DateTime!
+    name: String!
+    pulse_id: UUID!
+    attendees: [String]! @method(name: "getAttendeesAsArrayAttribute")
+    potential_strategies: [String]!
+        @method(name: "getPotentialStrategiesAsArrayAttribute")
+    action_items: [ActionItem]! @method(name: "getActionItemsAsArrayAttribute")
+    user_id: UUID!
+}
+
+input DeleteSummaryInput {
+    id: ID!
+}
+
+extend type Mutation {
+    deleteMeetingSummary(
+        input: DeleteSummaryInput!
+    ): ExecutionResult!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\DeleteMeetingSummaryMutation"
+        )
+}

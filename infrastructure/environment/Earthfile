@@ -1,0 +1,49 @@
+VERSION 0.6
+
+FROM alpine:3.17.2
+WORKDIR /app
+
+# Installs the dependencies and libraries.
+deps:
+    RUN apk add --no-cache \
+        bash \
+        curl \
+        git \
+        nodejs \
+        npm \
+        terraform \
+        unzip
+
+    RUN npm install -g jsonlint
+    RUN npm install -g prettyjson
+    RUN curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+# Formats the source files.
+format:
+    LOCALLY
+
+    RUN terraform fmt -write -recursive
+
+# Lints the source files.
+lint:
+  FROM +src
+
+  RUN terraform init
+
+  RUN tflint --init
+  RUN TFLINT_LOG=warn tflint --call-module-type=all
+
+# Copies the Terraform source configuration into Docker.
+src:
+  FROM +deps
+
+  COPY --if-exists .env                     ./
+  COPY --if-exists .tflint.hcl              ./
+  COPY .terraform.lock.hcl                  ./
+  COPY main.tf                              ./
+  COPY modules                              ./modules
+  COPY providers.tf                         ./
+  COPY --if-exists terraform.tfstate        ./
+  COPY --if-exists terraform.tfstate.backup ./
+  COPY --if-exists terraform.tfvars.json    ./
+  COPY variables.tf                         ./

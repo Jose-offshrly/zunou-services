@@ -1,0 +1,83 @@
+name: api (test)
+
+# Cancel in-progress jobs.
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    # Only run tests on pull requests.
+    branches-ignore:
+      - 'main'
+      - 'production' 
+      - 'production-candidate-*' 
+    paths:
+      - services/api/**
+      - .github/workflows/test-api.yml
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    outputs:
+      status: ${{ steps.changes.conclusion }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            api:
+              - services/api/**
+              - .github/workflows/test-api.yml
+
+      - name: Check service changed
+        if: steps.changes.outputs.api == 'true'
+        run: echo "Service has changed - running CI" # exit_with_success
+
+  api:
+    runs-on: ubuntu-latest
+
+    needs: check
+    if: needs.check.outputs.status == 'success'
+
+    env:
+      PINECONE_API_KEY: my-pinecone-key
+
+    defaults:
+      run:
+        working-directory: services/api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Install PHP packages
+        run: composer install
+
+      - name: Install phplint
+        run: composer bin phplint require --dev overtrue/phplint
+
+      - name: Install NPM packages
+        run: yarn install
+
+      - name: Lint
+        run: make lint BUNX=npx
+
+      - name: Format
+        run: |
+          make format BUNX=npx || true
+          git checkout ../../yarn.lock
+          git diff --exit-code || true

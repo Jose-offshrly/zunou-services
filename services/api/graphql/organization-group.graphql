@@ -1,0 +1,111 @@
+"The organization group of a pulse"
+type OrganizationGroup {
+    "Unique primary key."
+    id: ID!
+
+    "The group name"
+    name: String!
+
+    "The group description"
+    description: String!
+
+    "The group created at"
+    created_at: DateTime!
+
+    pulse: Pulse! @belongsTo
+
+    "The associated organization"
+    organization: Organization! @belongsTo
+
+    "The list of members"
+    pulseMembers: [GroupMember] @belongsToMany(relation: "pulseMembers")
+}
+
+type GroupMember {
+    id: ID!
+    user: User! @with(relation: "user")
+    order: String
+    job_description: String
+    responsibilities: [String!]
+    role: PulseMemberRole
+}
+
+type OrganizationGroupsResult {
+    organizationGroups: [OrganizationGroup!]!
+    unassignedPulseMembers: [PulseMember!]!
+}
+
+"Input for creating organization group."
+input CreateOrganizationGroupInput {
+    "The group name"
+    name: String!
+
+    "The group description"
+    description: String!
+
+    "The associated pulse id"
+    pulseId: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:pulses,id"
+        ])
+
+    "The associated organization id"
+    organizationId: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:organizations,id"
+        ])
+}
+
+"Input for updating organization group."
+input UpdateOrganizationGroupInput {
+    "The ID of the organization group to update"
+    id: ID!
+
+    "The group name"
+    name: String!
+
+    "The group description"
+    description: String!
+}
+
+"Input for creating organization group."
+input UpdateOrCreateOrganizationGroupMemberInput {
+    "The associated pulse id"
+    pulseId: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:pulses,id"
+        ])
+
+    "The associated group id"
+    organizationGroupId: ID
+        @rules(apply: [
+            "min:36" 
+            "max:36"
+            "exists:organization_groups,id"
+        ])
+
+    "The associated member id"
+    orderedMemberIds: [ID!]
+        @rulesForArray(apply: [
+            "required"
+            "exists:pulse_members,id"
+        ])
+}
+
+"Input for removing member from all organization groups."
+input RemoveOrganizationGroupMemberInput {
+    "The associated pulse id"
+    pulseId: ID!
+
+    "The associated member id"
+    pulseMemberId: ID!
+}

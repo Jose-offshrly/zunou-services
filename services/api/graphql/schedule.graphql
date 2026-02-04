@@ -1,0 +1,9 @@
+"Scheduler scale status summary"
+type SchedulerScaleStatus {
+    running: Int!
+    active: Int!
+    pending: Int!
+    maxInstances: Int!
+}
+
+

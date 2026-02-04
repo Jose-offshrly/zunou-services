@@ -1,0 +1,17 @@
+type Hiatus {
+    id: ID!
+    userId: String!
+    timesheetId: String!
+    start_at: String!
+    end_at: String
+    total: String
+}
+
+input CreateHiatusInput {
+    userId: ID!
+        @rules(apply: ["min: 36", "max: 36", "exists:users,id", "required"])
+    timesheetId: ID!
+        @rules(
+            apply: ["min: 36", "max: 36", "exists:timesheets,id", "required"]
+        )
+}

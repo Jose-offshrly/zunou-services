@@ -1,0 +1,37 @@
+import { useAuth0 } from '@auth0/auth0-react'
+import { FullPageLayout } from '@zunou-react/components/layout'
+import { pathFor } from '@zunou-react/services/Routes'
+import { useEffect } from 'react'
+import { useParams } from 'react-router-dom'
+
+import { LoadingSpinner } from '~/components/ui/LoadingSpinner'
+import { useOrganization } from '~/hooks/useOrganization'
+import { Routes } from '~/services/Routes'
+
+const UserAcceptInvitePage = () => {
+  const { loginWithRedirect } = useAuth0()
+  const { inviteCode } = useParams()
+  const { organizationId } = useOrganization()
+
+  useEffect(() => {
+    const returnTo = pathFor({
+      pathname: Routes.OrganizationBootstrap,
+      query: {
+        organizationId,
+      },
+    })
+
+    loginWithRedirect({
+      appState: { inviteCode, organizationId, returnTo },
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return (
+    <FullPageLayout sx={{ alignItems: 'center', minHeight: '100vh' }}>
+      <LoadingSpinner />
+    </FullPageLayout>
+  )
+}
+
+export default UserAcceptInvitePage

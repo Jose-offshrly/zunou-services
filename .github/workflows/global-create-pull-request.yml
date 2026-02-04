@@ -1,0 +1,62 @@
+name: global (create pull request)
+
+on:
+  workflow_dispatch:
+    inputs:
+      personal_token:
+        description: 'A repo-scoped personal access token to create the pull request with'
+        required:    true
+      title:
+        description: 'The title of the pull request'
+        required:    true
+
+jobs:
+  create_pull_request:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # We 'parameterize' the PR title by converting it to lowercase and replacing spaces with hyphens, and use it as the branch name.
+      - name: Generate the branch name
+        # tr -c 'a-zA-Z0-9' ' '      : Remove non-alphanumeric characters.
+        # awk '{$1=$1};1'            : Convert multiple spaces to a single space, and trim leading and trailing whitespace.
+        # tr ' ' '-'                 : Replace spaces with hyphens.
+        # tr '[:upper:]' '[:lower:]' : Convert to lowercase.
+        run: echo "NEW_BRANCH_NAME=$(echo "${{ github.event.inputs.title }}" | tr -c 'a-zA-Z0-9' ' ' | awk '{$1=$1};1' | tr ' ' '-' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Output the next pull request number
+        run:  |
+          curl -H 'Accept: application/vnd.github.v3+json' -H 'Authorization: token ${{ secrets.GITHUB_TOKEN }}' 'https://api.github.com/repos/${{ github.repository }}/pulls?state=all&amp;sort=created&amp;direction=desc&amp;per_page=1'
+
+      # We grab the most recent PR from the API, and increment the PR number to get the next one. We'll use this in the .meta file.
+      - name: Calculate the next pull request number
+        run:  |
+          echo "NEXT_PR_NUM=$(curl -H 'Accept: application/vnd.github.v3+json' -H 'Authorization: token ${{ secrets.GITHUB_TOKEN }}' 'https://api.github.com/repos/${{ github.repository }}/pulls?state=all&amp;sort=created&amp;direction=desc&amp;per_page=1' | grep '\"number\":' | tr -dc '0-9' | awk '{ print $1 + 1 }')" >> $GITHUB_ENV
+
+      # We need a change to base the PR on. It's common to append a timestamp to a file for this,
+      # but that causes merge conflicts as soon as you have multiple PRs open at the same time.
+      # To avoid conflicts, we make a separate file for each pull request. You can rebase out these
+      # commits before merging if you want.
+      - name: Make a .meta/*.md file
+        run:  |
+          mkdir -p .meta
+          touch .meta/${{ env.NEXT_PR_NUM }}.md
+          echo "## ${{ github.event.inputs.title }}"                                     >> .meta/${{ env.NEXT_PR_NUM }}.md
+          echo ""                                                                        >> .meta/${{ env.NEXT_PR_NUM }}.md
+          echo "By [@${{ github.actor }}](${{ github.server_url }}/${{ github.actor }})" >> .meta/${{ env.NEXT_PR_NUM }}.md
+          echo ""                                                                        >> .meta/${{ env.NEXT_PR_NUM }}.md
+          date "+Created %Y-%m-%d %H:%M"                                                 >> .meta/${{ env.NEXT_PR_NUM }}.md
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          assignees:      ${{ github.actor }}
+          branch:         ${{ env.NEW_BRANCH_NAME }}
+          commit-message: 'build(global): [#${{ env.NEXT_PR_NUM }}] [skip ci] create pull request'
+          committer:      GitHub <noreply@github.com>
+          delete-branch:  true
+          draft:          false
+          labels:         in-progress
+          title:          '${{ github.event.inputs.title }}'
+          token:          ${{ github.event.inputs.personal_token }}
+          body:           ''

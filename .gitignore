@@ -1,0 +1,23 @@
+# Miscellaneous
+.env
+.envrc
+/.vscode
+node_modules
+
+# Ignore generated credentials from google-github-actions/auth
+gha-creds-*.json
+
+# Figma
+*:Zone.Identifier
+
+# Ignore sam build artifacts
+/services/lambda/.aws-sam
+# Ignore sam testing data
+/services/lambda/*/data
+# Ignore function logs
+/services/lambda/*.log
+
+*.DS_Store
+*__pycache__
+/.aider.*
+services/unstructured/.vscode/*

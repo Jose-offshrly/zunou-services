@@ -1,0 +1,28 @@
+---
+micronaut:
+  server:
+    port: 8080
+datasources:
+  postgres:
+    driverClassName: 'org.postgresql.Driver'
+    password: ''
+    url: 'jdbc:postgresql://192.168.86.229:5432/kestra_development'
+    username: 'postgres'
+kestra:
+  queue:
+    type: 'postgres'
+  repository:
+    type: 'postgres'
+  server:
+    basicAuth:
+      enabled: true
+      password: 'kestra'
+      username: 'admin@zunou.ai'
+  storage:
+    type: 'local'
+    local:
+      basePath: '/app/storage'
+  tasks:
+    tmpDir:
+      path: '/tmp/kestra-wd/tmp'
+  url: 'http://localhost:8080/'

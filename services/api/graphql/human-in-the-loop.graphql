@@ -1,0 +1,5 @@
+"Input for mapping a user to a speaker"
+input UserSpeakerMapInput {
+    user_name: String! @rules(apply: ["required", "min:1", "string"])
+    speaker: String! @rules(apply: ["required", "min:1", "string"])
+}

@@ -1,0 +1,16 @@
+unstructured-ingest==0.2.1
+unstructured-ingest[s3]
+unstructured-ingest[openai]
+unstructured-ingest[docx]
+unstructured-ingest[pptx]
+unstructured-ingest[pdf]
+boto3
+flask
+gunicorn
+pinecone
+openai
+cachetools
+elevenlabs
+python-dotenv
+psycopg2-binary
+tiktoken==0.9.0

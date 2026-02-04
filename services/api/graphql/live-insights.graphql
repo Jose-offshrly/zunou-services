@@ -1,0 +1,419 @@
+type LiveInsightOutbox @model(class: "App\\Models\\LiveInsightOutbox") {
+    id: ID!
+    item_hash: String!
+    meeting_id: ID!
+    pulse_id: ID!
+    type: InsightType!
+    topic: String
+    description: String
+    explanation: String
+    user_id: ID!
+    delivery_status: InsightStatus!
+    delivered_at: DateTime
+    read_at: DateTime
+    closed_at: DateTime
+    closed_reason: String
+    is_bookmarked: Boolean
+    bookmarked_at: DateTime
+    remind_at: DateTime
+    snooze_count: Int!
+    created_at: DateTime!
+    updated_at: DateTime!
+    recommendations: [LiveInsightRecommendation!]!
+        @hasMany(relation: "recommendations")
+
+    pulse: Pulse! @belongsTo(relation: "pulse")
+    meeting: Meeting! @belongsTo(relation: "meeting")
+    user: User! @belongsTo(relation: "user")
+    organization: Organization! @belongsTo(relation: "organization")
+    feedback: LiveInsightOutboxFeedback @hasOne(relation: "feedback")
+    sources: [InsightSource!]! @hasMany(relation: "sources")
+    primarySource: InsightSource @hasOne(relation: "primarySource")
+
+    topicThread: Topic
+        @field(
+            resolver: "App\\GraphQL\\Resolvers\\InsightTopicThreadResolver@topicThread"
+        )
+}
+
+# Relay-style paginator for LiveInsightOutbox
+type PaginatedLiveInsights {
+    data: [LiveInsightOutbox!]!
+    paginatorInfo: PaginatorInfo!
+}
+
+enum InsightType {
+    action
+    decision
+    risk
+}
+
+enum InsightStatus {
+    pending
+    delivered
+    seen
+    closed
+}
+
+type LiveInsightOutboxFeedback {
+    id: ID!
+    outbox_id: ID!
+    user_id: ID!
+    rating: Int!
+    tags: JSON
+    comment: String
+    created_at: DateTime
+}
+
+type InsightSource {
+    id: ID!
+    insight_id: ID!
+    source_type: String!
+    source_id: ID!
+    contribution_weight: Float!
+    created_at: DateTime!
+    insight: LiveInsightOutbox! @belongsTo(relation: "insight")
+}
+
+input LiveInsightsFilter {
+    pulseId: ID
+        @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+        @where(key: "pulse_id", operator: "=")
+    organizationId: ID
+        @rules(apply: ["min:36", "max:36", "exists:organizations,id"])
+        @where(key: "organization_id", operator: "=")
+    meetingId: ID
+        @rules(apply: ["min:36", "max:36", "exists:meetings,id"])
+        @where(key: "meeting_id", operator: "=")
+    type: InsightType @where(key: "type", operator: "=")
+    status: InsightStatus
+    statuses: [InsightStatus!]
+    since: DateTime
+    search: String
+    bookmarked: Boolean
+}
+
+type RelatedTask {
+    id: String!
+    title: String!
+    status: TaskStatus!
+    similarity_score: Float!
+}
+
+type RelatedNote {
+    id: String!
+    title: String!
+    similarity_score: Float!
+}
+
+enum ActionTypes {
+    task
+    note
+    meeting
+    team_chat
+}
+
+enum ActionMethods {
+    create
+    update
+    delete
+    create_summary
+    update_summary
+    view
+}
+
+enum ActionStatus {
+    completed
+    failed
+}
+
+type LiveInsightRecommendationAction {
+    id: String!
+    type: ActionTypes!
+    method: ActionMethods!
+    data: JSON
+    status: ActionStatus!
+}
+
+type LiveInsightRecommendation {
+    id: ID!
+    title: String!
+    summary: String!
+    is_executed: Boolean!
+    execution_result: String
+    execution_result_data: JSON
+    executedBy: User
+    created_at: DateTime!
+    updated_at: DateTime!
+    actions: [LiveInsightRecommendationAction]
+        @field(
+            resolver: "App\\GraphQL\\Resolvers\\RecommendationActionResolver@actionsForUser"
+        )
+
+    relatedTasks: [RelatedTask]
+    relatedNotes: [RelatedNote]
+}
+
+input ExecuteInsightRecommendationInput {
+    insightId: ID!
+        @rules(apply: ["exists:live_insight_outbox,id"])
+        @where(key: "id", operator: "=")
+    recommendationId: ID!
+        @rules(apply: ["exists:live_insight_recommendations,id"])
+        @where(key: "id", operator: "=")
+    pulseId: ID!
+        @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+        @where(key: "pulse_id", operator: "=")
+    organizationId: ID!
+        @rules(apply: ["min:36", "max:36", "exists:organizations,id"])
+        @where(key: "organization_id", operator: "=")
+}
+
+input UpdateRecommendationActionInput {
+    recommendationActionsId: ID!
+        @rules(apply: ["exists:live_insight_recommendation_actions,id"])
+        @where(key: "id", operator: "=")
+    type: ActionTypes!
+    changes: String!
+}
+
+input DismissRecommendationActionInput {
+    recommendationActionsId: ID!
+        @rules(apply: ["exists:live_insight_recommendation_actions,id"])
+        @where(key: "id", operator: "=")
+}
+
+extend type Query @guard {
+    """
+    Your inbox only (defaults to open items: pending/delivered).
+    """
+    myLiveInsights(
+        filter: LiveInsightsFilter
+        page: Int = 1
+        perPage: Int = 20
+    ): PaginatedLiveInsights!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\LiveInsightOutbox"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\MyLiveInsightsQuery@paginate")
+
+    """
+    Fetch a single insight by id (ownership enforced by policy).
+    """
+    liveInsight(
+        id: ID!
+            @rules(apply: ["min:1", "required"])
+            @where(key: "id", operator: "=")
+        organizationId: ID!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+    ): LiveInsightOutbox
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\LiveInsightOutbox"
+        )
+        @find
+
+    """
+    Get recommendations for a specific insight.
+    """
+    GetInsightRecommendations(
+        id: ID!
+            @rules(apply: ["min:1", "required"])
+            @where(key: "id", operator: "=")
+        organizationId: ID!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+    ): [LiveInsightRecommendation!]!
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\LiveInsightOutbox"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Queries\\LiveInsightRecommendationsQuery"
+        )
+}
+
+input MarkLiveInsightSeenInput {
+    id: ID!
+}
+
+input MarkLiveInsightClosedInput {
+    id: ID!
+    reason: String
+}
+
+input GiveLiveInsightFeedbackInput {
+    outboxId: ID!
+    rating: Int! # 1..5
+    tags: JSON
+    comment: String
+}
+
+input UpdateInsightStatusInput {
+    id: ID!
+    status: InsightStatus! # pending, delivered, seen, closed
+    reason: String # for closed status
+    preventDowngrade: Boolean = true # don't go backwards (seen->delivered)
+}
+
+input BatchUpdateInsightStatusInput {
+    insightIds: [ID!]!
+    status: InsightStatus!
+    reason: String
+    preventDowngrade: Boolean = true
+}
+
+input InsightSourceInput {
+    source_type: String!
+    source_id: ID!
+    contribution_weight: Float = 1.0
+}
+
+input AddInsightSourcesInput {
+    insightId: ID!
+    sources: [InsightSourceInput!]!
+}
+
+input BookmarkInsightInput {
+    id: ID!
+}
+
+input SnoozeInsightInput {
+    id: ID!
+    remindAt: DateTime!
+}
+
+type BatchUpdateInsightStatusOutput {
+    updatedCount: Int!
+    insights: [LiveInsightOutbox!]!
+    errors: [BatchUpdateError!]!
+}
+
+type BatchUpdateError {
+    insightId: ID!
+    message: String!
+}
+
+type ExecutionResult {
+    success: Boolean!
+    message: String
+}
+
+extend type Mutation {
+    executeInsightRecommendation(
+        input: ExecuteInsightRecommendationInput!
+    ): ExecutionResult!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\ExecuteInsightRecommendationMutation"
+        )
+
+    updateRecommendationAction(
+        input: UpdateRecommendationActionInput!
+    ): ExecutionResult!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdateRecommendationActionMutation"
+        )
+
+    dismissRecommendationAction(
+        input: DismissRecommendationActionInput!
+    ): ExecutionResult!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\DismissRecommendationActionMutation"
+        )
+
+    markLiveInsightSeen(
+        input: MarkLiveInsightSeenInput! @spread
+    ): LiveInsightOutbox!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\LiveInsightOutbox"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\MarkLiveInsightSeenMutation")
+
+    markLiveInsightClosed(
+        input: MarkLiveInsightClosedInput! @spread
+    ): LiveInsightOutbox!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\LiveInsightOutbox"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\MarkLiveInsightClosedMutation"
+        )
+
+    giveLiveInsightFeedback(
+        input: GiveLiveInsightFeedbackInput! @spread
+    ): LiveInsightOutboxFeedback!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\GiveLiveInsightFeedbackMutation"
+        )
+
+    updateInsightStatus(
+        input: UpdateInsightStatusInput! @spread
+    ): LiveInsightOutbox!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\LiveInsightOutbox"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateInsightStatusMutation")
+
+    batchUpdateInsightStatus(
+        input: BatchUpdateInsightStatusInput! @spread
+    ): BatchUpdateInsightStatusOutput!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\BatchUpdateInsightStatusMutation"
+        )
+
+    addInsightSources(
+        input: AddInsightSourcesInput! @spread
+    ): LiveInsightOutbox!
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\AddInsightSourcesMutation")
+
+    bookmarkInsight(input: BookmarkInsightInput! @spread): LiveInsightOutbox!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\LiveInsightOutbox"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\BookmarkInsightMutation")
+
+    snoozeInsight(input: SnoozeInsightInput! @spread): LiveInsightOutbox!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\LiveInsightOutbox"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\SnoozeInsightMutation")
+}

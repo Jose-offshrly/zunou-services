@@ -1,0 +1,39 @@
+{
+  "ai_agents": "AIエージェント",
+  "no_agents": "利用可能なAIエージェントがありません",
+
+  "add_agent": "エージェントの追加",
+  "delete_agent_error": "エージェントの削除に失敗しました",
+  "delete_agent_success": "エージェントが正常に削除されました",
+  "agent_store": "エージェントストア",
+  "search_ai_agents": "AIエージェントの検索",
+
+  "update_agent_success": "エージェントが正常に更新されました",
+  "update_agent_error": "エージェントの更新に失敗しました",
+
+  "workspace_link": "ワークスペースリンク",
+  "project_id": "プロジェクトID",
+  "tools": "ツール",
+
+  "agent_guidelines_placeholder": "AIエージェントのガイドラインを記入してください",
+  "integration_description": "AIエージェントを効果的に動作させるために必要なツールやサービスと接続します。このセクションでは、外部API、認証情報、リポジトリ、その他のサードパーティ統合の設定について説明します。",
+  "jira_integration_description": "Jiraと接続するには、OAuthを使用してJiraアカウントにサインインしてください。必要な権限を要求し、セキュアに統合を管理します。",
+  "settings_description": "エージェントの統合設定を構成します。選択した統合タイプに基づいて、必要な項目を入力してください。",
+  "tools_description": "このAIエージェントの設定内容や使用しているツールの概要を確認できます。統合されているサービス、機能、およびカスタマイズ内容の要約が含まれます。詳細な設定方法や使用パターン、ベストプラクティスについては、以下のドキュメントをご覧ください。",
+  "documentation_description": "このAIエージェントの設定内容や使用しているツールの概要を確認できます。統合されているサービス、機能、およびカスタマイズ内容の要約が含まれます。詳細な設定方法や使用パターン、ベストプラクティスについては、以下のドキュメントをご覧ください。",
+  "full_documentation": "完全なドキュメント",
+  "click_to_redirect": "クリックして移動",
+  "or_visit": "またはアクセス",
+  "connect_to_jira": "Jiraと接続",
+  "connected": "接続済み",
+  "connecting": "接続中",
+
+  "create_agent_success": "エージェントが正常に作成されました",
+  "create_agent_error": "エージェントの作成に失敗しました",
+
+  "agent_settings_placeholder": "ソフトウェア開発委員会",
+  "add_ai_agents": "AIエージェントの追加",
+
+  "username_or_email": "ユーザー名またはメールアドレス",
+  "type_your_username_or_email_here": "ユーザー名またはメールアドレスを入力してください"
+}

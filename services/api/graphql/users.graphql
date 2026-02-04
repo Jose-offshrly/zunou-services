@@ -1,0 +1,162 @@
+enum UserPresence @enum(class: "App\\Enums\\UserPresence") {
+    active
+    busy
+    offline
+    hiatus
+}
+
+"Input for inviting users to join an organization."
+input InviteUserInput {
+    "The email address of the user."
+    email: String @rules(apply: ["email", "min:5", "max:250", "required"])
+
+    "The name of the user."
+    name: String @rules(apply: ["max:250", "required"])
+
+    "The organization that the user belongs to."
+    organizationId: String!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required"])
+
+    "The user's role in the organization."
+    role: OrganizationUserRole
+}
+
+"Input for signing users into an organization."
+input SignInUserInput {
+    "The user's invitation code."
+    inviteCode: String @rules(apply: ["min:8", "max:8"])
+
+    "The name of the user."
+    name: String @rules(apply: ["max:250"])
+
+    "The user's profile picture."
+    picture: String @rules(apply: ["max:5000"])
+
+    "The authentication provider (apple or google). Optional - will be detected from token if not provided."
+    provider: String @rules(apply: ["in:apple,google"])
+
+    "The Auth0 user ID (sub). Optional - will be extracted from JWT token if not provided."
+    auth0UserId: String @rules(apply: ["max:255"])
+}
+
+"Input for accepting invite"
+input AcceptInvitationInput {
+    "The user's invitation code."
+    inviteCode: String @rules(apply: ["min:8", "max:8"])
+}
+
+"Input for updating users."
+input UpdateMeInput {
+    "The ID of the last organization that the user accessed."
+    lastOrganizationId: String! @rules(apply: ["min:36", "max:36", "required"])
+
+    "The user's Slack ID."
+    slackId: String
+
+    "The user's name."
+    name: String
+
+    "The user's timezone"
+    timezone: String
+
+    "The user's presence"
+    presence: UserPresence
+
+    "Whether the user has completed onboarding."
+    onboarded: Boolean
+}
+
+ "Input for updating user's OpenAI API key."
+ input UpdateUserOpenaiApiKeyInput {
+     "The OpenAI API key to set for the user. Can be null to remove the key."
+     openaiApiKey: String
+         @rules(apply: ["nullable", "string"])
+         @rename(attribute: "openai_api_key")
+ }
+
+ "Input for updating user's AssemblyAI API key."
+ input UpdateUserAssemblyaiKeyInput {
+     "The AssemblyAI API key to set for the user. Can be null to remove the key."
+     assemblyaiKey: String
+         @rules(apply: ["nullable", "string"])
+         @rename(attribute: "assemblyai_key")
+ }
+
+"Account of a person who uses Zunou."
+type User {
+    "Timestamp when the account was created."
+    createdAt: DateTime!
+
+    "Unique email address."
+    email: String! @cache(maxAge: 600, private: true)
+
+    "Timestamp when the email was verified."
+    emailVerifiedAt: DateTime
+
+    "Unique primary key."
+    id: UUID! @cacheKey
+
+    "The ID of the last organization that the user accessed."
+    lastOrganizationId: UUID
+
+    "Non-unique name."
+    name: String! @cache(maxAge: 300, private: true)
+
+    "The user's profile picture."
+    picture: String @cache(maxAge: 600, private: true)
+
+    "Paginated list of organizations that this user has access to."
+    organizationUsers: [OrganizationUser!]!
+        @hasMany(defaultCount: 10, type: "PAGINATOR")
+
+    "The permissions that are assigned to this user"
+    permissions: [String!]! @cache(maxAge: 300, private: true)
+
+    "The user's Slack ID."
+    slackId: String @cache(maxAge: 600, private: true)
+
+    "Timestamp when the account was last updated."
+    updatedAt: DateTime!
+
+    "Pulse memberships of the user"
+    pulseMemberships: [PulseMember]
+        @hasMany(defaultCount: 10, type: "PAGINATOR")
+
+    "User timezone."
+    timezone: String @cache(maxAge: 600, private: true)
+
+    gravatar: String @cache(maxAge: 3600, private: true)
+
+    "The user's presence"
+    presence: UserPresence
+
+    "The organizations the user is a part of"
+    organizations: [Organization] @with(relation: "organizations")
+
+    directMessageThreads: [DirectMessageThread!]
+
+    unread_direct_messages: [DirectMessage!]!
+
+    "Whether the user has linked their Google Calendar"
+    google_calendar_linked: Boolean! @cache(maxAge: 300, private: true)
+
+    "Timestamp when the user first logged in."
+    firstLoginAt: DateTime
+
+    "Whether the user has completed onboarding."
+    onboarded: Boolean @cache(maxAge: 300, private: true)
+
+    "Timestamp when the user requested deletion."
+    requestDeleteAt: DateTime
+
+    "Timestamp when the user was deleted."
+    deletedAt: DateTime
+}
+
+"Output for validateEmails query"
+type ValidatedUser {
+    email: String!
+    userId: UUID!
+    organizationIds: [UUID!]!
+}

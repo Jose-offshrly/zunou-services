@@ -1,0 +1,8 @@
+pandas
+requests
+
+psycopg2-binary
+
+langchain-community
+langchain-openai
+langchain

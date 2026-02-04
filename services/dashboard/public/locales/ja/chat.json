@@ -1,0 +1,14 @@
+{
+  "pinned_message": "ピン留めされたメッセージ",
+  "unpinned_message": "ピン留めを解除されたメッセージ",
+  "failed_to_add_reaction": "リアクションの追加に失敗しました",
+  "missing_pulse_id": "パルスIDがありません。",
+  "team_chat_not_initialized": "チームチャットが初期化されていません",
+  "failed_to_send_message": "メッセージの送信に失敗しました",
+  "reply_thread_not_initialized": "リプライスレッドが初期化されていません",
+  "failed_to_send_reply": "リプライの送信に失敗しました",
+  "message_deleted_successfully": "メッセージが正常に削除されました",
+  "failed_to_delete_message": "メッセージの削除に失敗しました",
+  "message_unpinned": "メッセージが正常にピン留め解除されました",
+  "failed_to_unpin_message": "メッセージのピン留め解除に失敗しました"
+}

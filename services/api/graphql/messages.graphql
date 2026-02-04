@@ -1,0 +1,86 @@
+enum MessageSortOrder {
+    asc
+    desc
+}
+
+enum MessageStatus @enum(class: "App\\Enums\\MessageStatus") {
+    COMPLETE
+    PENDING
+    FAILED
+}
+
+enum MessageRole @enum(class: "App\\Enums\\MessageRole") {
+    assistant
+    tool
+    user
+    kestra
+}
+
+input MessageOrderByClause {
+    column: String!
+    order: SortOrder!
+}
+
+"An message belonging to a thread."
+type Message {
+    "Message content."
+    content: String
+
+    "Message content formatted as HTML."
+    content_html: String!
+
+    "Timestamp when the message was created."
+    createdAt: DateTime!
+
+    "Unique primary key."
+    id: UUID!
+
+    "ID of the organization that this message belongs to."
+    organizationId: UUID!
+
+    "The role of the user who wrote the message."
+    role: MessageRole!
+
+    "Timestamp when the message was last updated."
+    updatedAt: DateTime!
+
+    "ID of the user that this message belongs to."
+    userId: UUID!
+
+    "The user that this message belongs to."
+    user: User @belongsTo
+
+    "The status of the message"
+    status: MessageStatus!
+
+    "The saved state of the message"
+    is_saved: Boolean
+
+    "The saved message resource"
+    savedMessages: SavedMessage @hasOne
+
+    "ID of the thread that this message belongs to."
+    thread_id: UUID!
+
+    "ID of topic"
+    topic_id: UUID
+}
+
+input CreateMessageInput {
+    message: String
+
+    organizationId: String!
+
+    threadId: String!
+
+    userId: String
+}
+
+input RedoMessageInput {
+    messageId: String!
+}
+
+input UpdateAIMessageInput {
+    id: String!
+    content: String!
+}

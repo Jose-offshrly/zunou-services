@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": false,
+    "baseUrl": "src",
+    "esModuleInterop": true,
+    "module": "commonjs",
+    "noEmit": false,
+    "outDir": "dist",
+    "paths": {
+      "@zunou-graphql/*": ["../../../lib/zunou-graphql/*"],
+      "@zunou-queries/*": ["../../../lib/zunou-queries/*"],
+      "~/*": ["./*"],
+    },
+    "target": "ES2020",
+  },
+  "include": ["src/**/*"],
+}

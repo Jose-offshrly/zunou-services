@@ -1,0 +1,7 @@
+# Building
+
+```
+make docker
+```
+
+-

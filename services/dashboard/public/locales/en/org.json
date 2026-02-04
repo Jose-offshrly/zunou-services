@@ -1,0 +1,40 @@
+{
+  "build_your_team": "Build Your Team",
+  "default_group_action_description": "Create Leaders, Workers, & Managers Group",
+  "add_custom_group": "Add your Own Groups",
+  "start_from_scratch": "Start from Scratch",
+  "no_groups_found": "No groups found",
+  "only": "Only",
+  "admins_and_owners": "admins and owners",
+  "can_create_groups": "can create groups",
+  "group_creation_prompt": "Ask your team to create a group to get started",
+
+  "new_group": "New group",
+  "create_group_success": "Group created successfully",
+  "create_default_group_success": "Default groups created successfully",
+  "create_group_error": "Failed to create group",
+  "create_group_prompt": "Create a Group",
+
+  "delete_group_success": "Group deleted successfully",
+  "delete_group_error": "Failed to delete group",
+  "delete_group": "Delete Group",
+  "delete_group_confirmation": " The group will be deleted, and its members will be unassigned. No data will be lost, but this action cannot be reversed.",
+
+  "update_group_error": "Failed to update group",
+  "update_group_success": "Group updated successfully",
+
+  "search_members": "Search Members",
+  "all_members_assigned": "Everyone's assigned! Keep an eye out for new team members to assign later.",
+
+  "job_description": "Job Description",
+  "no_job_description": "No job description",
+  "responsibilities": "Responsibilities",
+  "enter_responsibilities": "Enter responsibilities (comma-separated)",
+  "no_responsibilities": "No responsibilities",
+  "ai_generated": "AI Generated",
+  "edit_person": "Edit Person",
+  "no_group_members_assigned": "No members assigned in this group yet",
+
+  "override_content": "Override Existing Content",
+  "override_content_warning_msg": "The current content will be replaced with AI-generated content. You can review and edit the generated content before saving."
+}

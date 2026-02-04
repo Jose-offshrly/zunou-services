@@ -1,0 +1,60 @@
+enum StrategyType @enum(class: "App\\Enums\\StrategyType") {
+    missions
+    automations
+    kpis
+    alerts
+}
+
+"Input for creating a pulse strategy."
+input CreateStrategyInput {
+    name: String
+    type: String!
+    description: String
+    prompt_description: String
+    freeText: String
+    organizationId: ID!
+    pulseId: ID
+}
+
+"Input for updating a pulse strategy."
+input UpdateStrategyInput {
+    id: ID!
+    name: String
+    description: String
+}
+
+"A strategy for a pulse."
+type Strategy {
+    id: ID!
+    name: String!
+    type: StrategyType!
+    pulseId: ID!
+    organizationId: ID!
+    description: String
+    prompt_description: String
+    free_text: String
+    status: String
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+type GroupedStrategies {
+    missions: [Strategy!]
+    automations: [Strategy!]
+    kpis: [Strategy!]
+    alerts: [Strategy!]
+}
+
+input StrategyDescriptionInput {
+    freeText: String!
+    type: StrategyType!
+    pulseId: ID
+    organizationId: ID!
+}
+
+type StrategyDescription {
+    title: String!
+    description: String!
+    prompt_description: String!
+    isSuccess: Boolean!
+}

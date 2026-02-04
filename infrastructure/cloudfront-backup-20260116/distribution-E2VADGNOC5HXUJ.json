@@ -1,0 +1,184 @@
+{
+    "ETag": "EODZ1EU2UHG86",
+    "Distribution": {
+        "Id": "E2VADGNOC5HXUJ",
+        "ARN": "arn:aws:cloudfront::322607082550:distribution/E2VADGNOC5HXUJ",
+        "Status": "Deployed",
+        "LastModifiedTime": "2025-11-06T08:35:31.229000+00:00",
+        "InProgressInvalidationBatches": 0,
+        "DomainName": "d1c3q7wki2auok.cloudfront.net",
+        "ActiveTrustedSigners": {
+            "Enabled": false,
+            "Quantity": 0
+        },
+        "ActiveTrustedKeyGroups": {
+            "Enabled": false,
+            "Quantity": 0
+        },
+        "DistributionConfig": {
+            "CallerReference": "123a8cb2-afbf-4d18-b3bb-8f0f3ba728b9",
+            "Aliases": {
+                "Quantity": 1,
+                "Items": [
+                    "cdn.esper77.com"
+                ]
+            },
+            "DefaultRootObject": "",
+            "Origins": {
+                "Quantity": 1,
+                "Items": [
+                    {
+                        "Id": "esper77.com-mhmzfov7oq8",
+                        "DomainName": "hdxzu4v826.execute-api.ap-northeast-3.amazonaws.com",
+                        "OriginPath": "/production",
+                        "CustomHeaders": {
+                            "Quantity": 0
+                        },
+                        "CustomOriginConfig": {
+                            "HTTPPort": 80,
+                            "HTTPSPort": 443,
+                            "OriginProtocolPolicy": "https-only",
+                            "OriginSslProtocols": {
+                                "Quantity": 1,
+                                "Items": [
+                                    "TLSv1.2"
+                                ]
+                            },
+                            "OriginReadTimeout": 30,
+                            "OriginKeepaliveTimeout": 5
+                        },
+                        "ConnectionAttempts": 3,
+                        "ConnectionTimeout": 10,
+                        "OriginShield": {
+                            "Enabled": false
+                        },
+                        "OriginAccessControlId": ""
+                    }
+                ]
+            },
+            "OriginGroups": {
+                "Quantity": 0
+            },
+            "DefaultCacheBehavior": {
+                "TargetOriginId": "esper77.com-mhmzfov7oq8",
+                "TrustedSigners": {
+                    "Enabled": false,
+                    "Quantity": 0
+                },
+                "TrustedKeyGroups": {
+                    "Enabled": false,
+                    "Quantity": 0
+                },
+                "ViewerProtocolPolicy": "redirect-to-https",
+                "AllowedMethods": {
+                    "Quantity": 3,
+                    "Items": [
+                        "HEAD",
+                        "GET",
+                        "OPTIONS"
+                    ],
+                    "CachedMethods": {
+                        "Quantity": 3,
+                        "Items": [
+                            "HEAD",
+                            "GET",
+                            "OPTIONS"
+                        ]
+                    }
+                },
+                "SmoothStreaming": false,
+                "Compress": true,
+                "LambdaFunctionAssociations": {
+                    "Quantity": 0
+                },
+                "FunctionAssociations": {
+                    "Quantity": 0
+                },
+                "FieldLevelEncryptionId": "",
+                "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+                "OriginRequestPolicyId": "216adef6-5c7f-47e4-b989-5492eafa07d3"
+            },
+            "CacheBehaviors": {
+                "Quantity": 1,
+                "Items": [
+                    {
+                        "PathPattern": "/i/*",
+                        "TargetOriginId": "esper77.com-mhmzfov7oq8",
+                        "TrustedSigners": {
+                            "Enabled": false,
+                            "Quantity": 0
+                        },
+                        "TrustedKeyGroups": {
+                            "Enabled": false,
+                            "Quantity": 0
+                        },
+                        "ViewerProtocolPolicy": "redirect-to-https",
+                        "AllowedMethods": {
+                            "Quantity": 3,
+                            "Items": [
+                                "HEAD",
+                                "GET",
+                                "OPTIONS"
+                            ],
+                            "CachedMethods": {
+                                "Quantity": 2,
+                                "Items": [
+                                    "HEAD",
+                                    "GET"
+                                ]
+                            }
+                        },
+                        "SmoothStreaming": false,
+                        "Compress": true,
+                        "LambdaFunctionAssociations": {
+                            "Quantity": 0
+                        },
+                        "FunctionAssociations": {
+                            "Quantity": 0
+                        },
+                        "FieldLevelEncryptionId": "",
+                        "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+                        "OriginRequestPolicyId": "acba4595-bd28-49b8-b9fe-13317c0390fa"
+                    }
+                ]
+            },
+            "CustomErrorResponses": {
+                "Quantity": 0
+            },
+            "Comment": "Cache for /i/ image generation",
+            "Logging": {
+                "Enabled": false,
+                "IncludeCookies": false,
+                "Bucket": "",
+                "Prefix": ""
+            },
+            "PriceClass": "PriceClass_All",
+            "Enabled": true,
+            "ViewerCertificate": {
+                "CloudFrontDefaultCertificate": false,
+                "ACMCertificateArn": "arn:aws:acm:us-east-1:322607082550:certificate/bbc295b5-2ef0-445b-99c6-6ea1ae6b8c82",
+                "SSLSupportMethod": "sni-only",
+                "MinimumProtocolVersion": "TLSv1.3_2025",
+                "Certificate": "arn:aws:acm:us-east-1:322607082550:certificate/bbc295b5-2ef0-445b-99c6-6ea1ae6b8c82",
+                "CertificateSource": "acm"
+            },
+            "Restrictions": {
+                "GeoRestriction": {
+                    "RestrictionType": "none",
+                    "Quantity": 0
+                }
+            },
+            "WebACLId": "",
+            "HttpVersion": "http2",
+            "IsIPV6Enabled": true,
+            "ContinuousDeploymentPolicyId": "",
+            "Staging": false
+        },
+        "AliasICPRecordals": [
+            {
+                "CNAME": "cdn.esper77.com",
+                "ICPRecordalStatus": "APPROVED"
+            }
+        ]
+    }
+}

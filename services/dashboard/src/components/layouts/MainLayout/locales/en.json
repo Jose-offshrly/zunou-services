@@ -1,0 +1,11 @@
+{
+  "menu_assistant": "Assistant",
+  "menu_billing": "Billing & Payment",
+  "menu_slack": "Connect Slack",
+  "menu_data": "Data",
+  "menu_home": "Home",
+  "menu_users": "Users",
+  "menu_pulse_hr": "HR",
+  "menu_pulse_sales": "Sales",
+  "menu_pulse_product": "Product"
+}

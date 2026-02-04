@@ -1,0 +1,20 @@
+type Attachment {
+    id: ID!
+    message_id: ID!
+    subject: String!
+    body: String!
+    created_at: DateTime!
+    updated_at: DateTime!
+}
+
+input CreateAttachmentInput {
+    message_id: ID!
+    subject: String!
+    body: String!
+}
+
+input UpdateAttachmentInput {
+    attachment_id: ID!
+    subject: String
+    body: String
+}

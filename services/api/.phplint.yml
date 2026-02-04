@@ -1,0 +1,12 @@
+exclude:
+    - storage
+    - vendor
+    - vendor-bin
+    - /Users/dave/Documents/Code/zunou/zunou/services/api/vendor-bin/phplint/vendor/symfony/process/Process.php
+extensions:
+    - php
+jobs: 10
+memory-limit: -1
+no-cache: true
+path: ./
+warning: true

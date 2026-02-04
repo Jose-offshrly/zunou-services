@@ -1,0 +1,77 @@
+enum NotificationType @enum(class: "App\\Enums\\NotificationType"){
+    PULSE
+    ORGANIZATION
+    USERS
+}
+
+enum NotificationStatus {
+    pending
+    resolved
+    dismissed
+}
+
+enum NotificationKind @enum(class: "App\\Enums\\NotificationKind") {
+    assignee_created
+    chat_mention
+    information
+    summary_option
+    survey
+}
+
+type Notification {
+    id: ID!
+    description: String!
+    status: NotificationStatus!
+    organization: Organization!
+    summary: Summary
+    kind: NotificationKind!
+
+    created_at: String!
+    updated_at: String!
+    context: NotificationContext
+    
+    pulse: Pulse
+    users: [NotificationUser] @belongsToMany(relation: "users")
+
+    readAt: DateTime @rename(attribute: "read_at")
+    isArchived: Boolean @rename(attribute: "is_archived")
+}
+
+type NotificationUser {
+    id: ID
+    name: String
+    notifications: [Notification!]! @belongsToMany
+}
+
+type NotificationContext {
+    id: ID!
+    summaryId: String
+    taskId: String
+    isArchived: Boolean!
+}
+
+input UpdateNotificationStatusInput {
+    notificationId: ID!
+    status: NotificationStatus!
+}
+
+input ReadNotificationInput {
+    notificationId: ID!
+}
+
+"Input for creating a notification."
+input CreateNotificationInput {
+    description: String!
+    type: NotificationType!
+    notifiableId: String
+    summaryId: String
+    pulseId: String
+    organizationId: String
+    kind: NotificationKind
+    notifyPulseMembers: Boolean
+    notifyActiveMembers: Boolean
+}
+
+input ReadNotificationsInput {
+    notificationIds: [ID!]!
+}

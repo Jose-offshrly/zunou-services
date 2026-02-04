@@ -1,0 +1,37 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\GraphQL\Mutations;
+
+use App\Models\TaskStatus;
+use GraphQL\Error\Error;
+use Illuminate\Support\Facades\Auth;
+
+readonly class CreatePulseTaskStatusMutation
+{
+    public function __invoke($_, array $args): TaskStatus
+    {
+        try {
+            $user = Auth::user();
+            if (! $user) {
+                throw new Error('No user found!');
+            }
+
+            // Calculate position: max position for this pulse + 1, or 1 if none exist
+            $maxPosition = TaskStatus::where('pulse_id', $args['pulse_id'])
+                ->max('position') ?? 0;
+
+            $position = $args['position'] ?? ($maxPosition + 1);
+
+            return TaskStatus::create([
+                'pulse_id' => $args['pulse_id'],
+                'label'    => $args['label'],
+                'color'    => $args['color'] ?? null,
+                'position' => $position,
+            ]);
+        } catch (\Exception $e) {
+            throw new Error('Failed to create task status: ' . $e->getMessage());
+        }
+    }
+}

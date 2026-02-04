@@ -1,0 +1,31 @@
+---
+micronaut:
+  server:
+    port: 80
+datasources:
+  postgres:
+    driverClassName: 'org.postgresql.Driver'
+    password: '${postgres_password}'
+    url: 'jdbc:${postgres_url}'
+    username: 'kestra'
+kestra:
+  queue:
+    type: 'postgres'
+  repository:
+    type: 'postgres'
+  server:
+    basicAuth:
+      enabled: true
+      password: '${kestra_password}'
+      username: '${kestra_username}'
+  storage:
+    type: 's3'
+    s3:
+      accessKey: '${aws_access_key_id}'
+      secretKey: '${aws_secret_access_key}'
+      region: '${aws_region}'
+      bucket: '${s3_bucket_name}'
+  tasks:
+    tmpDir:
+      path: '/tmp/kestra-wd/tmp'
+  url: 'http://localhost:80/'

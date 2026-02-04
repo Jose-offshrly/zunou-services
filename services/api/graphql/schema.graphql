@@ -1,0 +1,4185 @@
+#import activities.graphql
+#import actionables.graphql
+#import agenda.graphql
+#import agents.graphql
+#import ai-agents.graphql
+#import assemblyai.graphql
+#import assignee.graphql
+#import attachment.graphql
+#import assistantOnboarding.graphql
+#import attendee.graphql
+#import auth.graphql
+#import automation.graphql
+#import background.graphql
+#import category.graphql
+#import checklist.graphql
+#import checkout.graphql
+#import collaboration.graphql
+#import contact.graphql
+#import companion.graphql
+#import completions.graphql
+#import data-sources.graphql
+#import direct-message.graphql
+#import event-instance.graphql
+#import events.graphql
+#import files.graphql
+#import google-calendar.graphql
+#import hiatus.graphql
+#import human-in-the-loop.graphql
+#import integration.graphql
+#import kestra.graphql
+#import labels.graphql
+#import live-insights.graphql
+#import live-uploads.graphql
+#import llm.graphql
+#import meeting.graphql
+#import meetingsession.graphql
+#import messages.graphql
+#import metadata.graphql
+#import metrics.graphql
+#import misalignment-alerts.graphql
+#import notes.graphql
+#import notifications.graphql
+#import notification-preference.graphql
+#import onboarding.graphql
+#import organization-group.graphql
+#import organization-users.graphql
+#import organizations.graphql
+#import pulse.graphql
+#import pulse-member.graphql
+#import reply-team-thread.graphql
+#import saved-message.graphql
+#import scout.graphql
+#import setting.graphql
+#import slack.graphql
+#import strategy.graphql
+#import summary.graphql
+#import task.graphql
+#import team-message.graphql
+#import team-thread.graphql
+#import threads.graphql
+#import timesheet.graphql
+#import topic.graphql
+#import transcript.graphql
+#import users.graphql
+#import webpush.graphql
+#import widget.graphql
+#import mcp.graphql
+#import interest.graphql
+#import schedule.graphql
+
+"A datetime string with format `Y-m-d H:i:s`, e.g. `2018-05-23 13:43:32`."
+scalar DateTime
+    @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+
+"A date string with format `Y-m-d`, e.g. `2011-05-23`."
+scalar Date @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\Date")
+
+scalar UUID
+
+scalar JSON @scalar(class: "App\\GraphQL\\Scalars\\JSON")
+
+enum Origin {
+    PULSE
+    VITALS
+}
+
+"Indicates what fields are available at the top level of a query operation."
+type Query @guard {
+    "List multiple feed available for a pulse."
+    activities(
+        "Filters by organization ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "Filters by receiver ID"
+        receiverId: String!
+            @rules(apply: ["min:36", "max:36", "exists:users,id", "required"])
+            @where(key: "receiver_id", operator: "=")
+
+        pulseId: String
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+            @where(key: "pulse_id", operator: "=")
+    ): [Activity!]!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Activity"
+        )
+        @orderBy(column: "created_at", direction: DESC)
+        @where(key: "causer_id", operator: "!=", value: null)
+        @paginate(defaultCount: 10)
+
+    "List multiple actionables."
+    actionables(
+        "Filters by organization ID."
+        organizationId: String!
+            @rename(attribute: "organization_id")
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "Filters by pulse ID."
+        pulseId: String!
+            @rename(attribute: "pulse_id")
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+            @where(key: "pulse_id", operator: "=")
+
+        "Filters by event ID."
+        eventId: String
+            @rename(attribute: "event_id")
+            @rules(apply: ["min:36", "max:36", "exists:events,id"])
+            @where(key: "event_id", operator: "=")
+    ): [Actionable!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Actionable"
+        )
+        @orderBy(column: "created_at", direction: DESC)
+        @all
+
+    "Find a single thread by ID."
+    activeThread(
+        "Search by organization key."
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+            @where(key: "pulse_id", operator: "=")
+
+        "Search by organization key."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "type user thread"
+        type: ThreadType!
+    ): Thread
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Thread"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\ActiveThreadQuery")
+
+    "List multiple agendas."
+    agendas(
+        "Filters by organization ID."
+        organizationId: String!
+            @rename(attribute: "organization_id")
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "Filters by pulse ID."
+        pulseId: String!
+            @rename(attribute: "pulse_id")
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+            @where(key: "pulse_id", operator: "=")
+
+        "Filters by event ID."
+        eventId: String
+            @rename(attribute: "event_id")
+            @rules(apply: ["min:36", "max:36", "exists:events,id"])
+            @where(key: "event_id", operator: "=")
+    ): [Agenda!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Agenda"
+        )
+        @orderBy(column: "position", direction: ASC)
+        @all
+
+    "Find a single actionable by ID."
+    actionable(
+        "Search by primary key."
+        actionableId: String!
+            @rename(attribute: "actionable_id")
+            @rules(
+                apply: ["min:36", "max:36", "exists:actionables,id", "required"]
+            )
+            @where(key: "id", operator: "=")
+
+        "Filters by organization ID."
+        organizationId: String!
+            @rename(attribute: "organization_id")
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "Filters by pulse ID."
+        pulseId: String!
+            @rename(attribute: "pulse_id")
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+            @where(key: "pulse_id", operator: "=")
+    ): Actionable
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Actionable"
+        )
+        @find
+
+    "List multiple agents."
+    agents(
+        "Filters by name. Accepts SQL LIKE wildcards `%` and `_`."
+        name: String @builder(method: "App\\Models\\Agent@scopeWithName")
+
+        "Filters by organization ID."
+        organizationId: String!
+            @rename(attribute: "organization_id")
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "Filters by pulse ID."
+        pulseId: String!
+            @rename(attribute: "pulse_id")
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+            @where(key: "pulse_id", operator: "=")
+    ): [Agent!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Agent"
+        )
+        @paginate(defaultCount: 10)
+
+    "Find a single agent by ID."
+    agent(
+        "Search by primary key."
+        agentId: String!
+            @rename(attribute: "agent_id")
+            @rules(apply: ["min:36", "max:36", "exists:agents,id", "required"])
+            @where(key: "id", operator: "=")
+
+        "Filters by organization ID."
+        organizationId: String!
+            @rename(attribute: "organization_id")
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "Filters by pulse ID."
+        pulseId: String!
+            @rename(attribute: "pulse_id")
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+            @where(key: "pulse_id", operator: "=")
+    ): Agent
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Agent"
+        )
+        @find
+
+    "Get AiAgents by Pulse ID"
+    aiAgents(
+        "Filters by pulse ID."
+        pulseId: String!
+            @rename(attribute: "pulse_id")
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+            @where(key: "pulse_id", operator: "=")
+
+        "Filters by organization ID."
+        organizationId: String!
+            @rename(attribute: "organization_id")
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+    ): [AiAgent!]!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\AiAgent"
+        )
+        @all
+
+    "Find a single AiAgent by ID."
+    aiAgent(
+        "Search by primary key."
+        aiAgentId: String!
+            @rules(
+                apply: ["min:36", "max:36", "exists:ai_agents,id", "required"]
+            )
+            @where(key: "id", operator: "=")
+
+        "Search by pulse ID."
+        pulseId: String!
+            @rename(attribute: "pulse_id")
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+            @where(key: "pulse_id", operator: "=")
+
+        "Search by organization ID."
+        organizationId: String!
+            @rename(attribute: "organization_id")
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+    ): AiAgent
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\AiAgent"
+        )
+        @find
+
+    "Get attachment by ID"
+    attachment(
+        attachmentId: String!
+            @rules(
+                apply: ["min:36", "max:36", "exists:attachments,id", "required"]
+            )
+            @where(key: "id", operator: "=")
+    ): Attachment!
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Attachment"
+        )
+        @find
+
+    automationLog(
+        strategyId: String!
+            @rules(
+                apply: ["min:36", "max:36", "exists:strategies,id", "required"]
+            )
+    ): [AutomationLog!]!
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\AutomationLogQuery")
+
+    "List multiple backgrounds."
+    backgrounds(
+        "Filters by user ID."
+        userId: String!
+            @rules(apply: ["min:36", "max:36", "exists:users,id", "required"])
+            @where(key: "user_id", operator: "=")
+
+        "Filters by user ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+        "Filters by active"
+        active: Boolean @where(key: "active", operator: "=")
+    ): [Background!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Setting"
+        )
+        @paginate(defaultCount: 10)
+
+    "Get a single checklist by ID."
+    checklist(
+        checklistId: String!
+            @rules(
+                apply: ["min:36", "max:36", "exists:checklists,id", "required"]
+            )
+            @where(key: "id", operator: "=")
+
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+    ): Checklist
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Checklist"
+        )
+        @find
+
+    "List multiple checklists."
+    checklists(
+        "Filters by organization ID."
+        organizationId: String!
+            @rename(attribute: "organization_id")
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "Filters by pulse ID."
+        pulseId: String
+            @rename(attribute: "pulse_id")
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+            @where(key: "pulse_id", operator: "=")
+
+        "Filters by event ID."
+        eventId: String
+            @rename(attribute: "event_id")
+            @rules(apply: ["min:36", "max:36", "exists:events,id"])
+            @where(key: "event_id", operator: "=")
+    ): [Checklist!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Checklist"
+        )
+        @orderBy(column: "position", direction: ASC)
+        @all
+
+    collabs(
+        "Filters by pulse"
+        pulseId: ID @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+
+        "Filters by organization"
+        organizationId: ID!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+
+        "If true only return collabs user are a part of and are active/paused"
+        default: Boolean!
+
+        "Determine request origin"
+        origin: Origin = PULSE
+    ): [MeetingSession!]!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\MeetingSession"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\MeetingSessionQuery@collabs")
+
+    companionStatus(
+        "Filters by organization"
+        organizationId: ID!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+        "Determine request origin"
+        origin: Origin = PULSE
+    ): [MeetingSession!]!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\MeetingSession"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\CompanionStatusQuery")
+
+    "List multiple data sources."
+    dataSources(
+        "Filters by name. Accepts SQL LIKE wildcards `%` and `_`."
+        name: String @where(operator: "like")
+
+        "Filters by organization ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "Filters by pulse ID."
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+            @where(key: "pulse_id", operator: "=")
+
+        "Filters by is_viewable"
+        is_viewable: Boolean @where(key: "is_viewable", operator: "=")
+    ): [DataSource!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\DataSource"
+        )
+        @where(key: "type", operator: "!=", value: "manual")
+        @orderBy(column: "updated_at", direction: DESC)
+        @builder(method: "App\\Models\\DataSource@scopeForCurrentUser")
+        @paginate(defaultCount: 10)
+
+    "Filter datasources by origin"
+    dataSourcesByOrigin(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+            @where(key: "pulse_id", operator: "=")
+        origin: DataSourceOrigin! @scope
+        "Search for meeting name. Only useful for meeting data sources."
+        meetingName: String @whereMeetingName
+        page: Int
+    ): [DataSource!]
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\DataSource"
+        )
+        @builder(method: "App\\Models\\DataSource@scopeWithMeetingSession")
+        @orderBy(column: "updated_at", direction: DESC)
+        @paginate(defaultCount: 10)
+
+    "Find a single data source by ID."
+    dataSource(
+        "Search by primary key."
+        dataSourceId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:data_sources,id"
+                    "required"
+                ]
+            )
+            @where(key: "id", operator: "=")
+
+        "Filters by organization ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "Filters by pulse ID."
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+            @where(key: "pulse_id", operator: "=")
+    ): DataSource
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\DataSource"
+        )
+        @find
+
+    directMessages(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                    "required"
+                ]
+            )
+    ): [DirectMessageThread!]!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\DirectMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\DirectMessagesQuery")
+
+    "Generate a download link"
+    downloadDataSource(
+        dataSourceId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "exists:data_sources,id"
+                    "required"
+                ]
+            )
+    ): DownloadUrl!
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\DownloadDataSourceQuery")
+
+    "List event instances for a given pulse and organization."
+    eventInstances(input: EventsInput! @spread): [EventInstance!]!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\EventInstance"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\EventInstancesQuery")
+
+    "The fireflies webhook url, requires pulseId"
+    fireFliesWebhookUrl(
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+    ): String
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\FireFliesWebhookUrlQuery")
+
+    "Find a single hiatus by ID."
+    hiatus(
+        "Search by primary key."
+        hiatusId: String!
+            @rules(
+                apply: ["min:36", "max:36", "exists:hiatuses,id", "required"]
+            )
+            @where(key: "id", operator: "=")
+
+        "Search by user key."
+        userId: String!
+            @rules(apply: ["min:36", "max:36", "exists:users,id", "required"])
+            @where(key: "user_id", operator: "=")
+    ): Hiatus
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Hiatus"
+        )
+        @find
+
+    "fetch user integrations"
+    integrations(
+        "Filters by user ID"
+        userId: String!
+            @rules(apply: ["min:36", "max:36", "exists:users,id", "required"])
+        "Filters by pulse ID"
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+    ): [Integration!]
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Integration"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\IntegrationsQuery")
+
+    "Find a single integration by pulseId and type."
+    integration(
+        "Filters by user ID"
+        userId: String!
+            @rules(apply: ["min:36", "max:36", "exists:users,id", "required"])
+            @where(key: "user_id", operator: "=")
+
+        "Filters by pulse ID"
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id", "required"])
+            @where(key: "pulse_id", operator: "=")
+
+        "Find by integration type"
+        type: String! @where(key: "type", operator: "=")
+
+        "Find by integration ID"
+        integrationId: String @where(key: "id", operator: "=")
+    ): Integration
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Integration"
+        )
+        @find
+
+    "scout AI reminders"
+    scoutReminders(input: ReminderInput!): String!
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\ScoutRemindersQuery")
+
+    "get a single task"
+    task(
+        taskId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:tasks,id"])
+            @where(key: "id", operator: "=")
+    ): Task!
+        @canModel(ability: "view", injectArgs: true, model: "App\\Models\\Task")
+        @find
+
+    "list multiple tasks for a given entity"
+    tasks(
+        "Filters by organization ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+
+        "Filters by entity ID."
+        entityId: String @rules(apply: ["min:36", "max:36"])
+
+        "Filters by status"
+        status: TaskStatus
+
+        "Excludes tasks with this status"
+        excludeStatus: TaskStatus
+
+        "Filters by priority"
+        priority: TaskPriority
+
+        "Excludes tasks with this priority"
+        excludePriority: TaskPriority
+
+        "Filters by date"
+        date: Date
+
+        "Filters by date range"
+        dateRange: DateRangeInput
+
+        "Filters tasks by scheduling status. True returns tasks with start_date OR due_date, false returns tasks with both dates null, null applies no filter."
+        isScheduled: Boolean
+
+        "Filters by assignee"
+        assigneeId: String
+
+        "Excludes tasks assigned to this user"
+        excludeAssigneeId: String
+
+        "When true, exclude filters use OR logic: includes parent if parent OR any child doesn't match the excluded value. Only excludes if parent AND all children match. Default is false for backward compatibility."
+        excludeWithChildren: Boolean
+
+        "Filters by user ID (personal tasks and assigned tasks)"
+        userId: String
+
+        "Filters by search input"
+        search: String
+
+        "Filters by task type"
+        type: TaskType
+
+        "Filters by parent ID"
+        parentId: ID @rules(apply: ["min:36", "max:36"])
+
+        orderBy: TaskOrder
+    ): [Task]!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Task"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\TasksQuery")
+
+    "List all available master pulses."
+    masterPulses: [MasterPulse!]! @paginate(defaultCount: 10)
+
+    "Return the current user."
+    me: User @field(resolver: "App\\GraphQL\\Queries\\MeQuery")
+
+    "Return the authenticated user's OpenAI API key."
+    myOpenAiApiKey: String
+        @canModel(ability: "view", injectArgs: true, model: "App\\Models\\User")
+        @field(resolver: "App\\GraphQL\\Queries\\MyOpenAiApiKeyQuery")
+
+    "Return the authenticated user's AssemblyAI API key."
+    myAssemblyaiKey: String
+        @canModel(ability: "view", injectArgs: true, model: "App\\Models\\User")
+        @field(resolver: "App\\GraphQL\\Queries\\MyAssemblyaiKeyQuery")
+
+    "Fetch all contacts for a user"
+    contacts(
+        "Filters by user ID (optional, defaults to authenticated user)"
+        userId: ID @rules(apply: ["min:36", "max:36", "exists:users,id"])
+
+        "Search contacts by name or email"
+        search: String
+    ): [Contact!]!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Contact"
+        )
+        @paginate(
+            defaultCount: 10
+            resolver: "App\\GraphQL\\Queries\\ContactsQuery"
+        )
+
+    "Fetch a single contact by ID"
+    contact(
+        "The contact ID"
+        id: ID!
+            @rules(
+                apply: ["required", "min:36", "max:36", "exists:contacts,id"]
+            )
+            @where(key: "id", operator: "=")
+    ): Contact
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Contact"
+        )
+        @find
+
+    "fetch user meetings"
+    meetings(
+        "Filters by user ID"
+        userId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:users,id"])
+        "Filters by pulse ID"
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+        "Filters by added meetings"
+        added: Boolean
+        "Filters by ignored meetings"
+        ignored: Boolean
+    ): [Meeting!]
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Meeting"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\MeetingsQuery")
+
+    "Get meeting session by ID"
+    meetingSession(
+        meetingSessionId: ID!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:meeting_sessions,id"
+                ]
+            )
+            @where(key: "id", operator: "=")
+    ): MeetingSession!
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\MeetingSession"
+        )
+        @find
+
+    "List multiple meeting session available for a pulse."
+    meetingSessions(
+        "Filters by organization ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+
+        "Filters by pulse ID."
+        pulseId: String @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+
+        "Determine request origin"
+        origin: Origin = PULSE
+
+        "Filters by user ID."
+        userId: String @rules(apply: ["min:36", "max:36", "exists:users,id"])
+
+        "Filters by status"
+        status: MeetingSessionStatus
+
+        "Filters by an exact date (ignoring time)."
+        onDate: Date
+
+        "Filters sessions between a date range (format: [YYYY-MM-DD, YYYY-MM-DD])."
+        dateRange: [Date!]
+    ): [MeetingSession!]!
+        @field(resolver: "App\\GraphQL\\Queries\\MeetingSessionsQuery")
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\MeetingSession"
+        )
+
+    "List multiple messages for a thread."
+    messages(
+        "Filters by name. Accepts SQL LIKE wildcards `%` and `_`."
+        content: String
+            @builder(method: "App\\Models\\Message@scopeWithContent")
+
+        "Filters by thread ID."
+        threadId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:threads,id"])
+            @where(key: "thread_id", operator: "=")
+
+        "Filters by organization ID."
+        organizationId: String! @where(key: "organization_id", operator: "=")
+
+        "Excludes system messages."
+        isSystem: Boolean = false @where(key: "is_system", operator: "=")
+    ): [Message!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Message"
+        )
+        @builder(method: "App\\Models\\Message@scopeForCurrentUser")
+        @orderBy(column: "updated_at", direction: DESC)
+        @paginate(defaultCount: 10)
+
+    "Retrieve the top 10 questions asked for the month in a specific organization."
+    monthlyQuestions(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+        month: Int!
+        year: Int!
+    ): [MonthlyQuestion!]!
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\MonthlyQuestion"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\MonthlyQuestionsQuery")
+
+    "List monthly summary data for an organization."
+    monthlySummary(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+        month: Int!
+        year: Int!
+    ): [MonthlySummary!]!
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\MonthlySummary"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\MonthlySummaryQuery")
+
+    "List monthly time saved data."
+    monthlyTimeSaved(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+    ): [TimeSavedDataPoint!]!
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\MonthlyTimeSaved"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\TimeSavedQuery")
+
+    "List monthly trending topics."
+    monthlyTrendingTopics(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+        month: Int!
+        year: Int!
+    ): [TrendingTopic!]!
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\MonthlyTrendingTopic"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\TrendingTopicsQuery")
+
+    "Get a single notification by ID."
+    notification(
+        notificationId: ID!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:notifications,id"
+                ]
+            )
+            @where(key: "id", operator: "=")
+        organizationId: ID
+            @rules(apply: ["min:36", "max:36", "exists:organizations,id"])
+        pulseId: ID
+    ): Notification!
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Notification"
+        )
+        @find
+
+    "List multiple organizations."
+    organizations(
+        "Filters by name. Accepts SQL LIKE wildcards `%` and `_`."
+        name: String @where(operator: "like")
+
+        "Filters by exact slackTeamId."
+        slackTeamId: String @where(key: "slack_team_id", operator: "=")
+    ): [Organization!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Organization"
+        )
+        @paginate(defaultCount: 10)
+
+    "Find a single organization by ID."
+    organization(
+        "Search by primary key."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+            @where(key: "id", operator: "=")
+    ): Organization
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Organization"
+        )
+        @find
+
+    "List multiple organization groups"
+    organizationGroups(
+        "Search by pulse ID"
+        pulseId: ID!
+            @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+            @where(key: "pulse_id", operator: "=")
+    ): OrganizationGroupsResult!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\OrganizationGroup"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\OrganizationGroupsQuery")
+
+    "Find a single organization group by id"
+    organizationGroup(
+        "Search by primary key."
+        organizationGroupId: ID!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organization_groups,id"
+                ]
+            )
+            @where(key: "id", operator: "=")
+    ): OrganizationGroup
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\OrganizationGroup"
+        )
+        @find
+
+    "Fetch organization logo"
+    organizationLogo(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+    ): OrganizationLogo
+        @field(resolver: "App\\GraphQL\\Queries\\OrganizationLogoQuery")
+
+    "List all notifications for an organization"
+    organizationNotifications(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+    ): [Notification!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Notification"
+        )
+        @paginate(
+            defaultCount: 10
+            resolver: "App\\GraphQL\\Queries\\OrganizationNotificationsQuery"
+        )
+
+    "List multiple organization users."
+    organizationUsers(
+        "Filters by name. Accepts SQL LIKE wildcards `%` and `_`."
+        name: String
+            @builder(method: "App\\Models\\OrganizationUser@scopeWithName")
+
+        "Filters by organization ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "Filters by status."
+        status: String @where(operator: "=")
+
+        "Filters by user ID."
+        userId: String
+            @rules(apply: ["min:36", "max:36", "exists:users,id"])
+            @where(key: "user_id", operator: "=")
+
+        "Search by user name."
+        search: String
+            @builder(method: "App\\Models\\OrganizationUser@scopeWithSearch")
+    ): [OrganizationUser!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\OrganizationUser"
+        )
+        @paginate(defaultCount: 10)
+
+    "Find a single organization user by ID "
+    organizationUser(
+        "Filters by organization ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+        "Filters by user ID."
+        userId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:users,id"])
+            @where(key: "user_id", operator: "=")
+    ): OrganizationUser
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\OrganizationUser"
+        )
+        @find
+
+    previousActiveThread(
+        pulseId: ID!
+            @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+        organizationId: ID!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+    ): Thread
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Thread"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\PreviousActiveThreadQuery")
+
+    "List multiple pulses available for an organization."
+    pulses(
+        "Filters by organization ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "Optional filter by pulse type."
+        type: String @where(key: "type", operator: "=")
+
+        "Filters by name. Accepts SQL LIKE wildcards `%` and `_`."
+        name: String @where(operator: "like")
+    ): [Pulse!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Pulse"
+        )
+        @builder(method: "App\\Models\\Pulse@scopeForCurrentUser")
+        @orderBy(column: "created_at", direction: DESC)
+        @all
+
+    "Find Pulse for the given Pulse ID."
+    pulse(
+        "Search by primary key."
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+            @where(key: "id", operator: "=")
+
+        "Search by organization key."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+    ): Pulse!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Pulse"
+        )
+        @find
+
+    "A single pulse member by its ID."
+    pulseMember(
+        userId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:users,id"])
+            @where(key: "user_id", operator: "=")
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+            @where(key: "pulse_id", operator: "=")
+    ): PulseMember! @find @cache(maxAge: 120, private: true)
+
+    "List all members for a pulse"
+    pulseMembers(
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+    ): [PulseMember!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\PulseMember"
+        )
+        @paginate(
+            defaultCount: 10
+            resolver: "App\\GraphQL\\Queries\\PulseMembersQuery"
+        )
+
+    "List all notifications for a pulse"
+    pulseNotifications(
+        pulseId: String @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+    ): [Notification!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Notification"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\PulseNotificationsQuery")
+
+    pulseWelcomeData(
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+        userId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:users,id"])
+    ): PulseWelcomeData!
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\PulseWelcomeDataQuery")
+
+    "List multiple messages for a reply team thread."
+    replyTeamThreadMessages(
+        input: ReplyTeamThreadPaginationInput!
+    ): ReplyTeamThreadPaginator
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\ReplyTeamThread"
+        )
+        @orderBy(column: "updated_at", direction: DESC)
+        @field(resolver: "App\\GraphQL\\Queries\\ReplyTeamThreadMessagesQuery")
+
+    "Find a single saved message by ID."
+    savedMessage(
+        "Search by primary key."
+        savedMessageId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:saved_messages,id"
+                ]
+            )
+            @where(key: "id", operator: "=")
+    ): SavedMessage
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\SavedMessage"
+        )
+        @find
+
+    "List multiple saved messages"
+    savedMessages(
+        "Filters by user ID"
+        userId: ID!
+            @rules(apply: ["min:36", "max:36", "required", "exists:users,id"])
+
+        "Filters by organization ID"
+        organizationId: String
+            @rules(apply: ["min:36", "max:36", "exists:organizations,id"])
+            @where(key: "organization_id", operator: "=")
+
+        "Filters by pulse ID"
+        pulseId: String
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+            @where(key: "pulse_id", operator: "=")
+    ): [SavedMessage!]!
+        @paginate(
+            defaultCount: 10
+            resolver: "App\\GraphQL\\Queries\\SavedMessagesQuery"
+        )
+
+    "Get scheduler scale status"
+    schedulerScaleStatus: SchedulerScaleStatus!
+        @field(resolver: "App\\GraphQL\\Queries\\SchedulerScaleStatusQuery")
+
+    "Find a single setting by ID."
+    setting(
+        "Filters by user ID"
+        userId: ID!
+            @rules(apply: ["min:36", "max:36", "required", "exists:users,id"])
+            @where(key: "user_id", operator: "=")
+
+        "Filters by organization ID"
+        organizationId: ID!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+    ): Setting
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Setting"
+        )
+        @find
+
+    "Fetch setting image"
+    settingImage(
+        settingId: ID!
+            @rules(
+                apply: ["min:36", "max:36", "required", "exists:settings,id"]
+            )
+    ): SettingImage
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Setting"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\SettingImageQuery")
+
+    "Signed Data Source Url"
+    signedDataSourceUrl(
+        "Filters by datasource ID"
+        dataSourceId: ID!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:data_sources,id"
+                ]
+            )
+    ): DataSourceUrl!
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\DataSource"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\SignedDataSourceUrl")
+
+    "Find Slack credentials for the given Slack team ID."
+    slackCredentials(
+        "Filter by Slack team ID."
+        slackTeamId: String!
+    ): [SlackCredential!]!
+        @field(resolver: "App\\GraphQL\\Queries\\SlackCredentialsQuery")
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\SlackCredential"
+        )
+
+    "Find a single user by an identifying attribute."
+    slackUser(
+        "Search by slack ID."
+        slackId: String! @where(key: "slack_id", operator: "=")
+
+        "Search by organization ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+    ): User
+        @canModel(ability: "view", injectArgs: true, model: "App\\Models\\User")
+        @field(resolver: "App\\GraphQL\\Queries\\UserQuery")
+
+    "List multiple strategies available for a given pulse."
+    strategies(
+        "Filters by pulse ID."
+        pulseId: String!
+            @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+            @where(key: "pulse_id", operator: "=")
+
+        "Filters by name. Accepts SQL LIKE wildcards `%` and `_`."
+        name: String @where(operator: "like")
+    ): GroupedStrategies!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Strategy"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\StrategyQuery")
+
+    "Find a single summary by ID."
+    summary(
+        "Search by primary key."
+        summaryId: String!
+            @rules(
+                apply: ["min:36", "max:36", "required", "exists:summaries,id"]
+            )
+            @where(key: "id", operator: "=")
+    ): Summary
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Summary"
+        )
+        @find
+
+    "Find and single transcript"
+    transcript(
+        dataSourceId: ID!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:data_sources,id"
+                ]
+            )
+            @where(key: "data_source_id", operator: "=")
+    ): Transcript
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Transcript"
+        )
+        @find
+
+    "Find a single thread by ID."
+    thread(
+        "Search by primary key."
+        threadId: String!
+            @rules(apply: ["required", "min:36", "max:36", "exists:threads,id"])
+            @where(key: "id", operator: "=")
+
+        "Search by organization key."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+    ): Thread
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Thread"
+        )
+        @builder(method: "App\\Models\\Thread@scopeForCurrentUser")
+        @find
+
+    "List multiple threads."
+    threads(
+        "Filters by name. Accepts SQL LIKE wildcards `%` and `_`."
+        name: String @builder(method: "App\\Models\\Thread@scopeWithName")
+
+        "Filters by organization ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+
+        "Filters by pulse ID."
+        pulseId: String
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+            @where(key: "pulse_id", operator: "=")
+
+        "Optional filter by type with default as 'user'."
+        type: String = "user" @where(key: "type", operator: "=")
+
+        "Optional filter by is_active. When not provided, all records are returned."
+        is_active: Boolean
+            @builder(method: "App\\Models\\Thread@scopeWhereActive")
+    ): [Thread!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Thread"
+        )
+        @builder(method: "App\\Models\\Thread@scopeForCurrentUser")
+        @paginate(defaultCount: 30)
+
+    "List multiple saved messages for a given thread"
+    threadSavedMessages(
+        "Filters by thread ID"
+        threadId: ID @rules(apply: ["min:36", "max:36", "exists:threads,id"])
+
+        "Filters by user ID"
+        userId: ID!
+            @rules(apply: ["required", "min:36", "max:36", "exists:users,id"])
+    ): [SavedMessage!]!
+        @guard
+        @paginate(
+            defaultCount: 10
+            resolver: "App\\GraphQL\\Queries\\ThreadSavedMessagesQuery"
+        )
+
+    unacknowledgedMisalignmentAlerts(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+    ): [MisalignmentAlert!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\MisalignmentAlert"
+        )
+        @where(key: "acknowledged", operator: "=", value: false)
+        @paginate(defaultCount: 10)
+
+    "Find a single user by an identifying attribute."
+    user(
+        "Search by primary key."
+        userId: String!
+            @rules(apply: ["required", "min:36", "max:36", "exists:users,id"])
+            @where(key: "id", operator: "=")
+
+        "Search by organization ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+    ): User
+        @canModel(ability: "view", injectArgs: true, model: "App\\Models\\User")
+        @field(resolver: "App\\GraphQL\\Queries\\UserQuery")
+
+    "List multiple users."
+    users(
+        "Filters by email. Accepts SQL LIKE wildcards `%` and `_`."
+        email: String
+
+        "Filters by name. Accepts SQL LIKE wildcards `%` and `_`."
+        name: String
+
+        "Filters by organization ID."
+        organizationId: String
+            @rules(apply: ["min:36", "max:36", "exists:organizations,id"])
+    ): [User!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\User"
+        )
+        @paginate(
+            defaultCount: 10
+            resolver: "App\\GraphQL\\Queries\\UsersQuery"
+        )
+
+    "Fetch the active time sheet for the logged in user"
+    userActiveTimesheet(
+        "Filters by user ID"
+        userId: ID!
+            @rules(apply: ["required", "min:36", "max:36", "exists:users,id"])
+    ): Timesheet
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\UserActiveTimesheetQuery")
+
+    timesheets(
+        userId: String
+            @scope
+            @rules(apply: ["min:36", "max:36", "exists:users,id"])
+        date: Date @scope
+        dateRange: DateRangeInput @scope
+    ): [Timesheet!]!
+        @guard
+        @orderBy(column: "checked_in_at", direction: DESC)
+        @all
+
+    "Welcome message endpoint"
+    welcomeMessage: String!
+        @field(resolver: "App\\GraphQL\\Queries\\WelcomeMessageQuery")
+
+    "List widgets available for a user."
+    widgets(
+        "Filters by user ID."
+        userId: String!
+            @rules(apply: ["required", "min:36", "max:36", "exists:users,id"])
+            @where(key: "user_id", operator: "=")
+        "Filters by organization ID."
+        organizationId: String!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+            @where(key: "organization_id", operator: "=")
+    ): [Widget!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Widget"
+        )
+        @orderBy(column: "order")
+        @all
+
+    "Validates whether emails belong to Pulse users and returns their associated organizations."
+    validateEmails(emails: [String!]!): [ValidatedUser!]!
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\ValidateEmailsQuery")
+
+    "List multiple messages for a team thread."
+    teamThreadMessages(
+        pulseId: ID!
+            @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+        organizationId: ID!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+        page: Int = 1
+        topicId: ID @rules(apply: ["nullable", "exists:topics,id"])
+        unreadOnly: Boolean @where(key: "is_read", operator: "=", value: false)
+    ): TeamMessagePaginator
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\TeamMessage"
+        )
+        @orderBy(column: "updated_at", direction: DESC)
+        @field(resolver: "App\\GraphQL\\Queries\\TeamThreadMessagesQuery")
+
+    jumpTeamThreadMessage(
+        pulseId: ID!
+            @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+        organizationId: ID!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+        topicId: ID @rules(apply: ["nullable", "exists:topics,id"])
+        replyTeamThreadId: ID
+            @rules(apply: ["nullable", "exists:reply_team_threads,id"])
+        messageId: ID! @rules(apply: ["required", "exists:team_messages,id"])
+    ): TeamMessagePaginator
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\TeamMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\JumpTeamThreadMessageQuery")
+
+    searchTeamThreadMessages(
+        pulseId: ID!
+            @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+        organizationId: ID!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+        topicId: ID @rules(apply: ["nullable", "exists:topics,id"])
+        page: Int = 1
+        query: String!
+        order: String = "desc"
+    ): TeamMessagePaginator
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\TeamMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\SearchTeamThreadMessagesQuery")
+
+    "List topics for a team thread."
+    topics(
+        pulseId: ID!
+            @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+        organizationId: ID!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+        type: TopicEntityType = teamThread
+        page: Int = 1
+    ): TopicPaginator
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Topic"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\TopicsQuery")
+
+    topic(
+        topicId: ID!
+            @rules(apply: ["required", "min:36", "max:36", "exists:topics,id"])
+            @where(key: "id", operator: "=")
+    ): Topic
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Topic"
+        )
+        @find
+
+    "Get all unread direct messages for the current user"
+    unreadDirectMessages(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+    ): [User!]
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\DirectMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\UnreadDirectMessagesQuery")
+
+    searchDirectMessages(
+        organizationId: ID!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+        directMessageThreadId: ID!
+            @rules(apply: ["required", "exists:direct_message_threads,id"])
+        query: String! @rules(apply: ["required", "string"])
+        page: Int = 1
+    ): DirectMessageThreadPaginator
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\DirectMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\SearchDirectMessagesQuery")
+
+    "Get all unread team messages for the current user"
+    unreadTeamMessages(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+    ): [Pulse!]
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\TeamMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\UnreadTeamMessagesQuery")
+
+    pinnedTeamMessages(
+        teamThreadId: ID!
+        organizationId: ID!
+        page: Int = 1
+    ): TeamMessagePaginator
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\TeamMessage"
+        )
+        @orderBy(column: "updated_at", direction: DESC)
+        @field(resolver: "App\\GraphQL\\Queries\\PinnedTeamMessagesQuery")
+
+    pinnedDirectMessages(
+        directMessageThreadId: ID!
+        organizationId: ID!
+        page: Int = 1
+    ): DirectMessageThreadPaginator
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\DirectMessage"
+        )
+        @orderBy(column: "updated_at", direction: DESC)
+        @field(resolver: "App\\GraphQL\\Queries\\PinnedDirectMessagesQuery")
+
+    "Get all events from the user's Google Calendar."
+    googleCalendarEvents(
+        onDate: Date
+
+        dateRange: [Date!]
+
+        pulseId: String @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+    ): [GoogleCalendarEvent!]!
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\GoogleCalendarEventsQuery")
+
+    "Find a single event by ID."
+    event(
+        "Search by primary key."
+        eventId: ID!
+            @rules(apply: ["required", "min:36", "max:36", "exists:events,id"])
+            @where(key: "id", operator: "=")
+    ): Event
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\Event"
+        )
+        @find
+
+    "List events with filters and pagination."
+    events(input: EventsInput! @spread): PaginatedEvents!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Event"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\EventsQuery")
+
+    "List notes with filters and pagination."
+    paginatedNotes(input: PaginatedNotesInput! @spread): PaginatedNotes!
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\PaginatedNotesQuery")
+
+    "The public S3 URL for the notification sound."
+    notificationSoundUrl: String!
+        @field(resolver: "App\\GraphQL\\Queries\\NotificationSoundUrlQuery")
+
+    "get a single task"
+    note(
+        noteId: ID!
+            @rules(apply: ["min:36", "max:36", "required", "exists:notes,id"])
+            @where(key: "id", operator: "=")
+
+        "If true, show all labels including those from personal pulses, even if the note is outside a personal pulse."
+        viewAllLabels: Boolean
+    ): Note!
+        @canModel(ability: "view", injectArgs: true, model: "App\\Models\\Note")
+        @field(resolver: "App\\GraphQL\\Queries\\NoteQuery")
+
+    "List all notes."
+    notes(
+        organizationId: ID!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+            @rename(attribute: "organization_id")
+            @where(key: "organization_id", operator: "=")
+
+        pulseId: ID
+            @rules(apply: ["nullable", "min:36", "max:36", "exists:pulses,id"])
+            @rename(attribute: "pulse_id")
+            @where(key: "pulse_id", operator: "=")
+
+        userId: ID
+            @rules(apply: ["nullable", "min:36", "max:36", "exists:users,id"])
+            @rename(attribute: "user_id")
+            @where(key: "user_id", operator: "=")
+
+        "Filter by pinned status"
+        pinned: Boolean @where(key: "pinned", operator: "=")
+
+        "Filter by title. Accepts SQL LIKE wildcards `%` and `_`."
+        title: String @like
+
+        "Filter by content. Accepts SQL LIKE wildcards `%` and `_`."
+        content: String @like
+
+        "If true, show all labels including those from personal pulses, even if notes are outside a personal pulse."
+        viewAllLabels: Boolean
+    ): [Note!]! @field(resolver: "App\\GraphQL\\Queries\\NotesQuery")
+
+    "List labels for a pulse. If the pulse is personal and belongs to the authenticated user, also include labels used by that user's notes in other pulses."
+    labels(
+        pulseId: ID!
+            @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+            @rename(attribute: "pulse_id")
+            @where(key: "pulse_id", operator: "=")
+        "If true, return labels from all pulses the user is a member of; otherwise only for the given pulse."
+        viewAll: Boolean
+    ): [Label!]! @guard @field(resolver: "App\\GraphQL\\Queries\\LabelsQuery")
+
+    "List all notification preferences for a user. Defaults to current user if userId is not provided."
+    notificationPreferences(
+        userId: ID
+            @rules(apply: ["nullable", "min:36", "max:36", "exists:users,id"])
+            @where(key: "user_id", operator: "=")
+    ): [NotificationPreference!]!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\NotificationPreference"
+        )
+        @builder(
+            method: "App\\Models\\NotificationPreference@scopeForCurrentUser"
+        )
+        @all
+
+    "Get all task phases for a pulse"
+    taskPhases(
+        pulseId: ID!
+            @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+    ): [TaskPhaseType!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\TaskPhase"
+        )
+        @all(model: "App\\Models\\TaskPhase", scopes: ["forPulse"])
+
+    "Get a single task phase by ID"
+    taskPhase(
+        id: ID!
+            @rules(apply: ["required", "min:36", "max:36"])
+            @where(key: "id", operator: "=")
+    ): TaskPhaseType
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\TaskPhase"
+        )
+        @find(model: "App\\Models\\TaskPhase")
+
+    "Get all task statuses for a pulse or default task statuses. pulseId and defaults are mutually exclusive."
+    taskStatuses(
+        pulseId: ID
+            @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+        defaults: Boolean = false
+    ): [TaskStatusType!]!
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\TaskStatus"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\TaskStatusesQuery")
+
+    "Get a single task status by ID"
+    taskStatus(
+        id: ID!
+            @rules(apply: ["required", "min:36", "max:36"])
+            @where(key: "id", operator: "=")
+    ): TaskStatusType
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\TaskStatus"
+        )
+        @find(model: "App\\Models\\TaskStatus")
+}
+
+"Indicates what mutation operations are available."
+type Mutation {
+    "Accepts the invitation"
+    acceptInvitation(input: AcceptInvitationInput! @spread): User
+        @field(resolver: "App\\GraphQL\\Mutations\\AcceptInvitationMutation")
+
+    attachMeetingSessionToEvent(
+        input: AttachMeetingSessionToEventInput! @spread
+    ): Event!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Event"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\AttachMeetingSessionToEventMutation"
+        )
+
+    "Creates a new actionable."
+    createActionable(input: CreateActionableInput! @spread): Actionable!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Actionable"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateActionableMutation")
+
+    "Refreshes actionables for a specific event by deleting existing ones and creating new ones."
+    refreshEventActionables(
+        meetingId: String!
+            @rules(
+                apply: ["required", "min:36", "max:36", "exists:meetings,id"]
+            )
+        eventId: String!
+            @rules(apply: ["required", "min:36", "max:36", "exists:events,id"])
+        pulseId: String!
+            @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+        organizationId: String!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+            @rename(attribute: "organization_id")
+    ): Boolean!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Actionable"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\RefreshEventActionablesMutation"
+        )
+
+    "Updates an existing actionable."
+    updateActionable(input: UpdateActionableInput! @spread): Actionable!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Actionable"
+        )
+        @update
+
+    "Deletes an actionable."
+    deleteActionable(
+        id: ID!
+            @whereKey
+            @rules(
+                apply: ["required", "min:36", "max:36", "exists:actionables,id"]
+            )
+    ): Actionable!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Actionable"
+        )
+        @delete
+
+    "Acknowledge a misalignment alert."
+    acknowledgeMisalignmentAlert(
+        input: AcknowledgeMisalignmentAlertInput! @spread
+    ): MisalignmentAlert!
+        @guard
+        @canModel(
+            ability: "acknowledge"
+            injectArgs: true
+            model: "App\\Models\\MisalignmentAlert"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\AcknowledgeMisalignmentAlertMutation"
+        )
+
+    "Webhook endpoint for pulse companion events"
+    companionWebhook(input: CompanionWebhookInput!): MeetingSession!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\MeetingSession"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CompanionWebhookMutation")
+
+    "Creates a new agenda."
+    createAgenda(input: CreateAgendaInput! @spread): Agenda!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Agenda"
+        )
+        @create
+
+    "Creates a new agent."
+    createAgent(input: CreateAgentInput! @spread): Agent
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Agent"
+        )
+        @create
+
+    "Creates a new onboarding session."
+    createAssistantOnboarding(
+        input: CreateAssistantOnboardingInput! @spread
+    ): Thread!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateAssistantOnboardingMutation"
+        )
+
+    "Creates a new onboarding session."
+    createAssistantTaskListActions(
+        input: CreateAssistantTaskListActionsInput! @spread
+    ): Message!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Task"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateAssistantTaskListActionsMutation"
+        )
+
+    "Creates a new ai agent related to a pulse."
+    createAiAgent(input: CreateAiAgentInput! @spread): AiAgent
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\AiAgent"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateAiAgentMutation")
+
+    "create the user setting background"
+    createBackground(input: CreateBackgroundInput! @spread): Background!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Background"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateBackgroundMutation")
+
+    "create a contact"
+    createContact(input: CreateContactInput! @spread): Contact!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Contact"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateContactMutation")
+
+    "update a contact (patch - only provided fields will be updated)"
+    updateContact(input: UpdateContactInput! @spread): Contact!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Contact"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateContactMutation")
+
+    "attach an existing contact to another user"
+    attachContactToUser(input: AttachContactToUserInput! @spread): Contact!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Contact"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\AttachContactToUserMutation")
+
+    "delete a contact - detaches user if other owners exist, otherwise soft deletes the contact"
+    deleteContact(input: DeleteContactInput! @spread): Contact!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Contact"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteContactMutation")
+
+    "Creates a new data source."
+    createDataSource(input: CreateDataSourceInput! @spread): DataSource
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\DataSource"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateDataSourceMutation")
+
+    "Creates a data source from a note."
+    createNoteDataSource(input: CreateNoteDataSourceInput! @spread): DataSource
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\DataSource"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateNoteDataSourceMutation"
+        )
+
+    deleteNoteFileAttachement(
+        fileId: ID!
+            @whereKey
+            @rules(apply: ["required", "min:36", "max:36", "exists:files,id"])
+    ): Boolean!
+        @guard
+        @canModel(
+            ability: "deleteAny"
+            injectArgs: true
+            model: "App\\Models\\Note"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\DeleteNoteAttachmentMutation"
+        )
+
+    "Creates a Stripe Checkout session for a subscription or payment."
+    createCheckoutSession(
+        price_id: String!
+        quantity: Int = 1
+    ): CheckoutSessionResponse!
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateCheckoutSessionMutation"
+        )
+
+    "Creates a new completion."
+    createCompletion(input: CreateCompletionInput! @spread): [Message!]!
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateCompletionMutation")
+
+    "Creates a new insights completion."
+    createInsightsCompletion(
+        input: CreateInsightsCompletionInput! @spread
+    ): [Message!]!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateInsightsCompletionMutation"
+        )
+
+    "Create a custom pulse for an organization."
+    createCustomPulse(input: CreateCustomPulseInput!): Pulse!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Pulse"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateCustomPulseMutation")
+
+    "Creates a new event."
+    createEvent(input: CreateEventInput! @spread): Event!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Event"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateEventMutation")
+
+    "Creates a new event instance."
+    createEventInstance(
+        input: CreateEventInstanceInput! @spread
+    ): EventInstance!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\EventInstance"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateEventInstanceMutation")
+
+    "Deletes an event instance."
+    deleteEventInstance(id: ID!): EventInstance!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\EventInstance"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteEventInstanceMutation")
+
+    "Creates a new checklist."
+    createChecklist(input: CreateChecklistInput! @spread): Checklist!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Checklist"
+        )
+        @create
+
+    "Updates an existing checklist."
+    updateChecklist(input: UpdateChecklistInput! @spread): Checklist!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Checklist"
+        )
+        @update
+
+    "Deletes a checklist."
+    deleteChecklist(
+        id: ID!
+            @whereKey
+            @rules(
+                apply: ["required", "min:36", "max:36", "exists:checklists,id"]
+            )
+    ): Checklist!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Checklist"
+        )
+        @delete
+
+    "Update the order of given checklists"
+    updateChecklistOrder(input: [ChecklistOrderInput!]!): [Checklist!]!
+        @guard
+        @canModel(
+            ability: "updateAny"
+            injectArgs: true
+            model: "App\\Models\\Checklist"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdateChecklistOrderMutation"
+        )
+
+    "create a hiatus resource for the given user and timesheet"
+    createHiatus(input: CreateHiatusInput! @spread): Hiatus!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Hiatus"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateHiatusMutation")
+
+    "create a collaboration resource"
+    createCollaboration(
+        input: CreateCollaborationInput! @spread
+    ): Collaboration!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Collaboration"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateCollaborationMutation")
+
+    createDirectMessage(input: CreateDirectMessageInput): DirectMessage!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\DirectMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateDirectMessageMutation")
+
+    "Creates a new label."
+    createLabel(input: CreateLabelInput! @spread): Label!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Label"
+        )
+        @create
+
+    "Creates a new live upload."
+    createLiveUpload(input: CreateLiveUploadInput! @spread): LiveUpload
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\LiveUpload"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateLiveUploadMutation")
+
+    "create a meeting session resource"
+    createMeetingSession(
+        input: CreateMeetingSessionInput! @spread
+    ): MeetingSession!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\MeetingSession"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateMeetingSessionMutation"
+        )
+
+    "Create a new note."
+    createNote(input: CreateNoteInput! @spread): Note!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Note"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateNoteMutation")
+
+    "Creates a smart agenda."
+    createSmartAgenda(input: CreateSmartAgendaInput! @spread): [Agenda!]!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Agenda"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateSmartAgendaMutation")
+
+    "Creates a smart checklist."
+    createSmartChecklist(
+        input: CreateSmartChecklistInput! @spread
+    ): [Checklist!]!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Checklist"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateSmartChecklistMutation"
+        )
+
+    "Create smart notes from text."
+    createSmartNotes(input: CreateSmartNotesInput! @spread): SmartNoteResponse!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Note"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateSmartNotesMutation")
+
+    "Creates a new data organization."
+    createOrganization(input: CreateOrganizationInput! @spread): Organization
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Organization"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateOrganizationMutation")
+
+    "Creates a new organiztion group"
+    createOrganizationGroup(
+        input: CreateOrganizationGroupInput! @spread
+    ): OrganizationGroup
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\OrganizationGroup"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateOrganizationGroupMutation"
+        )
+
+    "Creates a new organiztion group member"
+    createOrganizationGroupMember(
+        input: UpdateOrCreateOrganizationGroupMemberInput! @spread
+    ): [PulseMember]
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\OrganizationGroup"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdateOrCreateOrganizationGroupMemberMutation"
+        )
+
+    "Create a pulse for an organization by selecting from available master pulses."
+    createPulse(input: ProvisionPulseInput!): Pulse!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Pulse"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreatePulseMutation")
+
+    "Create a pulse member for a user that is associated to a pulse."
+    createPulseMember(
+        pulseId: String!
+            @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+        input: [CreatePulseMemberInput!]
+    ): [PulseMember!]
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\PulseMember"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreatePulseMemberMutation")
+
+    "create a task resource"
+    createTask(input: [CreateTaskInput!]): [Task]!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Task"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateTaskMutation")
+
+    "Creates a new thread."
+    createThread(input: CreateThreadInput! @spread): Thread
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Thread"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateThreadMutation")
+
+    "Creates a new team message."
+    createTeamMessage(input: CreateTeamMessageInput!): TeamMessage
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\TeamMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateTeamMessageMutation")
+
+    "Creates a new topic."
+    createTopic(input: CreateTopicInput!): Topic
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Topic"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateTopicMutation")
+
+    "Updates an existing topic."
+    updateTopic(input: UpdateTopicInput!): Topic
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Topic"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateTopicMutation")
+
+    "Deletes a topic."
+    deleteTopic(input: DeleteTopicInput!): Boolean
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Topic"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteTopicMutation")
+
+    "Creates a new team thread."
+    createTeamThread(input: CreateTeamThreadInput!): TeamThread
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\TeamThread"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateTeamThreadMutation")
+
+    "Create smart tasks from transcript"
+    createSmartTasks(input: CreateSmartTasksInput!): [Task]!
+        @guard
+        @canModel(
+            ability: "smartCreate"
+            injectArgs: true
+            model: "App\\Models\\Task"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateSmartTasksMutation")
+
+    checkIn: Timesheet!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Timesheet"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CheckInMutation")
+
+    checkOut: Timesheet
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Timesheet"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CheckOutMutation")
+
+    clearTeamMessages(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+    ): Boolean!
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\TeamMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\ClearTeamMessagesMutation")
+
+    clearNotifications(
+        pulseId: String!
+            @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+    ): Boolean!
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\ClearNotificationsMutation")
+
+    clearOrganizationNotifications(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "required"
+                    "min:36"
+                    "max:36"
+                    "exists:organizations,id"
+                ]
+            )
+    ): Boolean!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\ClearOrganizationNotificationsMutation"
+        )
+
+    "Deletes an ai agent by ID."
+    deleteAiAgent(aiAgentId: String! @whereKey): AiAgent!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\AiAgent"
+        )
+        @delete
+
+    "Deletes an agenda."
+    deleteAgenda(id: ID! @whereKey): Agenda!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Agenda"
+        )
+        @delete
+
+    "Deletes a background"
+    deleteBackground(id: ID! @whereKey): Background!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Background"
+        )
+        @delete
+
+    "Deletes a data source."
+    deleteDataSource(input: DeleteDataSourceInput! @spread): DataSource
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\DataSource"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteDataSourceMutation")
+
+    "Deletes a direct message"
+    deleteDirectMessage(directMessageId: ID!): DirectMessage
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\DirectMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteDirectMessageMutation")
+
+    "Deletes an event."
+    deleteEvent(id: ID!, sync_with_google_calendar: Boolean = false): Event!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Event"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteEventMutation")
+
+    "delete a given pulsemember"
+    deleteIntegration(integrationId: ID!): Boolean!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Integration"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteIntegrationMutation")
+
+    "Delete a label."
+    deleteLabel(id: ID! @whereKey): Label!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Label"
+        )
+        @delete
+
+    "Deletes a meeting session."
+    deleteMeetingSession(id: ID! @whereKey): MeetingSession!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\MeetingSession"
+        )
+        @delete
+
+    deleteSavedMessage(savedMessageId: String!): Boolean
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\SavedMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteSavedMessageMutation")
+
+    "Delete a given task"
+    deleteTask(id: ID! @whereKey): Task @forceDelete
+
+    "Create a task phase"
+    createTaskPhase(input: CreateTaskPhaseInput! @spread): TaskPhaseType!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\TaskPhase"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateTaskPhaseMutation")
+
+    "Update a task phase"
+    updateTaskPhase(input: UpdateTaskPhaseInput! @spread): TaskPhaseType!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\TaskPhase"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateTaskPhaseMutation")
+
+    "Delete a task phase"
+    deleteTaskPhase(id: ID! @rules(apply: ["required", "min:36", "max:36"])): Boolean!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\TaskPhase"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteTaskPhaseMutation")
+
+    "Create a pulse task status"
+    createPulseTaskStatus(input: CreatePulseTaskStatusInput! @spread): TaskStatusType!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\TaskStatus"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreatePulseTaskStatusMutation")
+
+    "Update a pulse task status"
+    updatePulseTaskStatus(input: UpdatePulseTaskStatusInput! @spread): TaskStatusType!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\TaskStatus"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdatePulseTaskStatusMutation")
+
+    "Update the order of task statuses"
+    updateTaskStatusOrder(input: [TaskStatusOrderInput!]!): [TaskStatusType!]!
+        @guard
+        @canModel(
+            ability: "updateAny"
+            injectArgs: true
+            model: "App\\Models\\TaskStatus"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateTaskStatusOrderMutation")
+
+    "Delete a pulse task status"
+    deletePulseTaskStatus(input: DeletePulseTaskStatusInput! @spread): Boolean!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\TaskStatus"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeletePulseTaskStatusMutation")
+
+    "Deletes a team message."
+    deleteTeamMessage(input: DeleteTeamMessageInput!): Boolean!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\TeamMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteTeamMessageMutation")
+
+    getOrCreateDirectMessageThread(
+        input: DirectMessageThreadPaginationInput!
+    ): DirectMessageThreadPaginator!
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\DirectMessageThread"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\GetOrCreateDirectMessageThreadMutation"
+        )
+
+    createInterest(input: CreateInterestInput): Interest
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateInterestMutation")
+
+    "Mark a team message as read"
+    markTeamMessageRead(input: MarkTeamMessageReadInput!): Boolean!
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\TeamMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\MarkTeamMessageReadMutation")
+
+    "Update an AI agent"
+    updateAiAgent(input: UpdateAiAgentInput! @spread): AiAgent!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\AiAgent"
+        )
+        @update
+
+    "Update a given collaboration"
+    updateBackground(input: UpdateBackgroundInput! @spread): Background!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Background"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateBackgroundMutation")
+
+    "Update a given collaboration"
+    updateCollaboration(
+        input: UpdateCollaborationInput! @spread
+    ): Collaboration!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Collaboration"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateCollaborationMutation")
+
+    "Update a given meeting session"
+    updateMeetingSession(
+        input: UpdateMeetingSessionInput!
+    ): MeetingSessionStatusResponse!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\MeetingSession"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdateMeetingSessionMutation"
+        )
+
+    "Re-ingest a meeting session's transcript into a target pulse; returns the created Meeting"
+    reingestMeetingSessionTranscript(
+        input: ReingestMeetingSessionTranscriptInput!
+    ): Meeting!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\MeetingSession"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\ReingestMeetingSessionTranscriptMutation"
+        )
+
+    "Deletes a note."
+    deleteNote(noteId: ID! @whereKey): Note!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Note"
+        )
+        @delete
+
+    "Deletes multiple notes."
+    deleteNotes(noteIds: [ID!]! @whereKey): Boolean!
+        @guard
+        @canModel(
+            ability: "deleteAny"
+            injectArgs: true
+            model: "App\\Models\\Note"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteNotesMutation")
+
+    "Redo a message by deleting it and all subsequent messages from the user, then resending the original message."
+    redoMessage(input: RedoMessageInput! @spread): Message!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Message"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\RedoMessageMutation")
+
+    "Update the details of the organization group"
+    updateOrganizationGroup(
+        input: UpdateOrganizationGroupInput!
+    ): OrganizationGroup!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\OrganizationGroup"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdateOrganizationGroupMutation"
+        )
+
+    "Update the details of a given pulse"
+    updatePulse(input: UpdatePulseInput!): Pulse!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Pulse"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdatePulseMutation")
+
+    updatePulseLastVisited(
+        pulseId: String!
+        userId: String!
+        lastVisited: DateTime
+    ): PulseMember!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdatePulseLastVisitedMutation"
+        )
+
+    "Update a pulse member role"
+    updatePulseMemberRole(input: UpdatePulseMemberRoleInput!): PulseMember!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Pulse"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdatePulseMemberRoleMutation"
+        )
+
+    "Update a pulse member details"
+    updatePulseMember(input: UpdatePulseMemberInput!): PulseMember!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\PulseMember"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdatePulseMemberMutation")
+
+    updateDirectMessage(input: UpdateDirectMessageInput!): DirectMessage
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\DirectMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateDirectMessageMutation")
+
+    "Update a given task"
+    updateTask(input: UpdateTaskInput! @spread): Task!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Task"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateTaskMutation")
+
+    "Update the status of a task"
+    updateTaskStatus(input: UpdateTaskStatusInput! @spread): Task!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Task"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateTaskStatusMutation")
+
+    "update the order of given tasks"
+    updateTaskOrder(input: [TaskOrderInput!]): [Task!]
+        @guard
+        @canModel(
+            ability: "updateAny"
+            injectArgs: true
+            model: "App\\Models\\Task"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateTaskOrderMutation")
+
+    "Updates an existing team message."
+    updateTeamMessage(input: UpdateTeamMessageInput!): TeamMessage
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\TeamMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateTeamMessageMutation")
+
+    "Updates a timesheet."
+    updateTimesheet(input: UpdateTimesheetInput! @spread): Timesheet
+        @guard
+        @update
+
+    "Generates S3 credentials suitable for downloading a data source file."
+    generateDataScientistDownloadLink(
+        input: GenerateDataScientistDownloadLinkInput! @spread
+    ): DownloadUrl
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\GenerateDataScientistDownloadLink"
+        )
+
+    "Generates S3 credentials suitable for downloading a data source file."
+    generateDataSourceDownloadLink(
+        input: GenerateDataSourceDownloadLinkInput! @spread
+    ): DownloadUrl
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\GenerateDataSourceDownloadLink"
+        )
+
+    """
+    Generates entities from free-form text based on a given schema or type.
+    """
+    generateEntitiesFromText(
+        input: GenerateEntitiesFromTextInput! @spread
+    ): String!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\GenerateEntitiesFromTextMutation"
+        )
+
+    "Generates a message for a scout event break"
+    generateEventBreakMessage(
+        input: GenerateEventBreakMessageInput! @spread
+    ): String!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\GenerateEventBreakMessageMutation"
+        )
+
+    "Generates a message for a scout event break"
+    generateJobDescription(
+        organizationUserId: ID!
+    ): GenerateJobDescriptionResponse!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\GenerateJobDescriptionMutation"
+        )
+
+    "Generates a title for a thread based on its messages."
+    generateThreadTitle(
+        input: GenerateThreadTitleInput! @spread
+    ): ThreadTitleResponse
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\GenerateThreadTitleMutation")
+
+    "Generates S3 credentials suitable for uploading."
+    generateUploadCredentials(
+        input: GenerateUploadCredentialsInput! @spread
+    ): UploadCredentials
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\GenerateUploadCredentialsMutation"
+        )
+
+    "Generates S3 credentials suitable for uploading to development bucket."
+    generateLiveUploadCredentials(
+        input: GenerateUploadCredentialsInput! @spread
+    ): UploadCredentials
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\GenerateLiveUploadCredentialsMutation"
+        )
+
+    "Invites a new user."
+    inviteUser(input: [InviteUserInput!]!): [User]
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\User"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\InviteUserMutation")
+
+    manuallyScheduleRecurringMeetingSummary(
+        input: ManuallyCreateRecurringMeetingInput! @spread
+    ): String!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\ManuallyScheduleRecurringMeetingSummaryMutation"
+        )
+
+    "Agrees to the terms on behalf of an organization"
+    onboardingAgreeToTerms(
+        input: OnboardingAgreeToTermsInput! @spread
+    ): Organization
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Organization"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\OnboardingAgreeToTermsMutation"
+        )
+
+    "Confirms that an organization has completed onboarding"
+    onboardingComplete(input: OnboardingCompleteInput! @spread): Organization
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Organization"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\OnboardingCompleteMutation")
+
+    "Confirms that an organization has sufficient data sources set up during onboarding"
+    onboardingConfirmDataSources(
+        input: OnboardingConfirmDataSourcesInput! @spread
+    ): [DataSource!]!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Organization"
+        )
+        @paginate(
+            defaultCount: 10
+            resolver: "App\\GraphQL\\Mutations\\OnboardingConfirmDataSourcesMutation"
+        )
+
+    "Confirms that an organization has installed the Slack app during onboarding"
+    onboardingConfirmSlack(
+        input: OnboardingConfirmSlackInput! @spread
+    ): Organization
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Organization"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\OnboardingConfirmSlackMutation"
+        )
+
+    "Generates A Slack installation URI."
+    onboardingGenerateSlackInstallUri(
+        input: OnboardingGenerateSlackInstallUriInput! @spread
+    ): SlackInstallUri!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Organization"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\OnboardingGenerateSlackInstallUriMutation"
+        )
+
+    pinNotes(noteIds: [ID!]! @whereKey): [Note!]!
+        @guard
+        @canModel(
+            ability: "updateAny"
+            injectArgs: true
+            model: "App\\Models\\Note"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\PinNotesMutation")
+
+    "Signs a user in after Auth0 authentication."
+    signInUser(input: SignInUserInput! @spread): User
+        @field(resolver: "App\\GraphQL\\Mutations\\SignInUserMutation")
+
+    "Updates an agent."
+    updateAgent(input: UpdateAgentInput! @spread): Agent
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Agent"
+        )
+        @update
+
+    "Updates a data source."
+    updateDataSource(input: UpdateDataSourceInput! @spread): DataSource
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\DataSource"
+        )
+        @update
+
+    "Updates the currently signed-in user."
+    updateMe(input: UpdateMeInput! @spread): User
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\User"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateMeMutation")
+
+    "Updates the OpenAI API key for the currently signed-in user."
+    updateUserOpenaiApiKey(input: UpdateUserOpenaiApiKeyInput! @spread): User
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\User"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdateUserOpenaiApiKeyMutation"
+        )
+
+    "Updates the AssemblyAI API key for the currently signed-in user."
+    updateUserAssemblyaiKey(input: UpdateUserAssemblyaiKeyInput! @spread): User
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\User"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdateUserAssemblyaiKeyMutation"
+        )
+
+    "Updates an existing note."
+    updateNote(input: UpdateNoteInput! @spread): Note!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Note"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateNoteMutation")
+
+    "Update the order of given notes"
+    updateNoteOrder(input: [NoteOrderInput!]!): [Note!]!
+        @guard
+        @canModel(
+            ability: "updateAny"
+            injectArgs: true
+            model: "App\\Models\\Note"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateNoteOrderMutation")
+
+    "Updates an organization."
+    updateOrganization(input: UpdateOrganizationInput! @spread): Organization
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Organization"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateOrganizationMutation")
+
+    "Updates the currently signed-in user organization user details."
+    updateOrganizationUser(
+        input: UpdateOrganizationUserInput! @spread
+    ): OrganizationUser
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\OrganizationUser"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdateOrganizationUserMutation"
+        )
+
+    "Updates a thread."
+    updateThread(input: UpdateThreadInput! @spread): Thread
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Thread"
+        )
+        @update
+
+    "Deletes a thread"
+    deleteThread(input: DeleteThreadInput! @spread): Thread!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Thread"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteThreadMutation")
+
+    "Creates a pulse strategy"
+    createStrategy(input: CreateStrategyInput!): Strategy!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Strategy"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateStrategyMutation")
+
+    "Updates a pulse strategy"
+    updateStrategy(input: UpdateStrategyInput!): Strategy!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Strategy"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateStrategyMutation")
+
+    "Deletes a pulse strategy"
+    deleteStrategy(strategyId: String!): Boolean
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Strategy"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteStrategyMutation")
+
+    "Creates a new message."
+    createMessage(input: CreateMessageInput! @spread): Message!
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateMessageMutation")
+
+    "Updates an AI message content without changing timestamps."
+    updateAIMessage(input: UpdateAIMessageInput! @spread): Message!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Message"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateAIMessageMutation")
+
+    "Creates an attachment"
+    createAttachment(input: CreateAttachmentInput!): Attachment!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Attachment"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateAttachmentMutation")
+
+    "Updates an attachment"
+    updateAttachment(input: UpdateAttachmentInput!): Attachment!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Attachment"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateAttachmentMutation")
+
+    "Creates a notification"
+    createNotification(input: CreateNotificationInput!): Notification
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateNotificationMutation")
+
+    "Updates a notification status"
+    updateNotificationStatus(
+        input: UpdateNotificationStatusInput!
+    ): Notification!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Notification"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdateNotificationStatusMutation"
+        )
+
+    saveMessage(input: SaveMessageInput!): SavedMessage!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\SavedMessage"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\SaveMessageMutation")
+
+    "Register a new user"
+    signup(input: UserSignUpInput! @spread): User
+        @field(resolver: "App\\GraphQL\\Mutations\\SignUpMutation")
+
+    kestraMessage(input: CreateKestraMessageInput! @spread): Message!
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateKestraMessageMutation")
+
+    createIntegration(input: CreateIntegrationInput! @spread): Integration!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Integration"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateIntegrationMutation")
+
+    refetchIntegration(input: RefetchIntegrationInput! @spread): Integration!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Integration"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\RefetchIntegrationMutation")
+
+    "add meeting as a datasource"
+    createMeetingDataSource(
+        input: CreateMeetingDataSourceInput! @spread
+    ): DataSource!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Meeting"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateMeetingDataSourceMutation"
+        )
+
+    ignoreMeeting(meetingId: String!): Meeting!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Meeting"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\IgnoreMeetingMutation")
+
+    "create summary options"
+    createSummaryOptions(input: CreateSummaryOptionsInput @spread): Message!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Message"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateSummaryOptionsMutation"
+        )
+
+    createEventSummary(input: CreateEventSummaryInput! @spread): String!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Event"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateEventSummaryMutation")
+
+    deletePulse(pulseId: String!): Boolean
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Pulse"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeletePulseMutation")
+
+    updateActiveThread(threadId: String!): Thread!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Thread"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateActiveThreadMutation")
+
+    "Updates an existing agenda."
+    updateAgenda(input: UpdateAgendaInput! @spread): Agenda!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Agenda"
+        )
+        @update
+
+    "Update the order of given agendas"
+    updateAgendaOrder(input: [AgendaOrderInput!]!): [Agenda!]!
+        @guard
+        @canModel(
+            ability: "updateAny"
+            injectArgs: true
+            model: "App\\Models\\Agenda"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateAgendaOrderMutation")
+
+    "Updates an existing event."
+    updateEvent(input: UpdateEventInput! @spread): Event!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Event"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateEventMutation")
+
+    "Attaches a Google Meet link to an event if it doesn't have one."
+    attachGoogleMeetToEvent(
+        eventId: ID!
+        invite_pulse: Boolean = false
+    ): Event!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Event"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\AttachGoogleMeetToEventMutation"
+        )
+
+    updateSummary(input: updateSummaryOptionsInput): Summary
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Summary"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateSummaryMutation")
+
+    "Update an existing label."
+    updateLabel(input: UpdateLabelInput! @spread): Label!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Label"
+        )
+        @update
+
+    "Update an org user role"
+    updateOrganizationUserRole(
+        input: UpdateOrganizationUserRoleInput!
+    ): OrganizationUser!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\OrganizationUser"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdateOrganizationUserRoleMutation"
+        )
+
+    "create a strategy description"
+    createStrategyDescription(
+        input: StrategyDescriptionInput!
+    ): StrategyDescription!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Strategy"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateStrategyDescriptionMutation"
+        )
+
+    "make the notification read for the given user"
+    readNotification(input: ReadNotificationInput!): Notification!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Notification"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\ReadNotificationMutation")
+
+    "make all notifications read for the given user"
+    readNotifications: [Notification!]!
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\ReadNotificationsMutation")
+
+    "Invite a guest to a pulse"
+    invitePulseGuest(input: InvitePulseGuestInput! @spread): User!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\PulseMember"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\InvitePulseGuestMutation")
+
+    "Deletes an organization group."
+    deleteOrganizationGroup(id: ID! @whereKey): OrganizationGroup!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\OrganizationGroup"
+        )
+        @delete
+
+    "delete a organization member"
+    deleteOrganizationUser(organizationUserId: ID!): Boolean!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\OrganizationUser"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\DeleteOrganizationUserMutation"
+        )
+
+    "Pins an organization user for direct messages"
+    pinOrganizationUser(input: PinOrganizationUserInput!): OrganizationUser!
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\PinOrganizationUserMutation")
+
+    "Unpins an organization user for direct messages"
+    unpinOrganizationUser(
+        input: UnpinOrganizationUserInput!
+    ): OrganizationUser!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UnpinOrganizationUserMutation"
+        )
+
+    "create a widget resource for the given user"
+    createWidget(input: CreateWidgetInput! @spread): Widget!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Widget"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateWidgetMutation")
+
+    "update a widget resource"
+    updateWidget(input: UpdateWidgetInput! @spread): Widget!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Widget"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateWidgetMutation")
+
+    "delete a given widget"
+    deleteWidget(widgetId: ID!): Boolean!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\Widget"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteWidgetMutation")
+
+    "Deletes the currently authenticated user."
+    deleteMe: Boolean!
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\DeleteUserMutation")
+
+    "update the order of given widgets"
+    updateWidgetOrder(input: [WidgetOrderInput!]): [Widget!]
+        @guard
+        @canModel(
+            ability: "updateAny"
+            injectArgs: true
+            model: "App\\Models\\Widget"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateWidgetOrderMutation")
+
+    "update the given hiatus resource"
+    updateHiatus(hiatusId: ID!): Hiatus!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Hiatus"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateHiatusMutation")
+
+    updatePulseOrder(input: [UpdatePulseOrderInput!]): [Pulse!]
+        @guard
+        @canModel(
+            ability: "updateAny"
+            injectArgs: true
+            model: "App\\Models\\Pulse"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdatePulseOrderMutation")
+
+    "delete a given pulsemember"
+    deletePulseMember(pulseMemberId: ID!): Boolean!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\PulseMember"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\DeletePulseMemberMutation")
+
+    "create the user settings"
+    createSetting(input: CreateSettingInput! @spread): Setting!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Setting"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateSettingMutation")
+
+    "udpate the user settings"
+    updateSetting(input: UpdateSettingInput! @spread): Setting!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Setting"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\UpdateSettingMutation")
+
+    "creates a meeting resource"
+    createMeeting(input: CreateMeetingInput! @spread): Meeting!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\Meeting"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateMeetingMutation")
+
+    "Creates a new reply team thread."
+    createReplyTeamThread(input: CreateReplyTeamThreadInput!): ReplyTeamThread
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\ReplyTeamThread"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateReplyTeamThreadMutation"
+        )
+
+    "Mark a direct message as read"
+    markDirectMessageRead(input: MarkDirectMessageReadInput!): Boolean!
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\DirectMessage"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\MarkDirectMessageReadMutation"
+        )
+
+    markDirectMessagesAsRead(threadId: ID!): Boolean!
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\MarkDirectMessagesAsReadMutation"
+        )
+    markTeamMessagesAsRead(threadId: ID!, topicId: ID): Boolean!
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\MarkTeamMessagesAsReadMutation"
+        )
+
+    pinTeamMessage(teamMessageId: ID!, pinned: Boolean!): TeamMessage!
+        @field(resolver: "App\\GraphQL\\Mutations\\PinTeamMessageMutation")
+
+    pinDirectMessage(directMessageId: ID!, pinned: Boolean!): DirectMessage!
+        @field(resolver: "App\\GraphQL\\Mutations\\PinDirectMessageMutation")
+
+    googleCalendarRevoke: GoogleCalendarRevokeResponse!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\GoogleCalendarRevokeMutation"
+        )
+
+    "Force refresh Google Calendar webhook setup for the authenticated user"
+    refreshGoogleCalendarWebhook: GoogleCalendarWebhookRefreshResponse!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\RefreshGoogleCalendarWebhookMutation"
+        )
+
+    "Fetch and save authenticated user's calendar events to a specific pulse or all personal pulses"
+    fetchUserCalendarEvents(
+        input: FetchUserCalendarEventsInput
+    ): FetchUserCalendarEventsResponse!
+        @guard
+        @canModel(
+            ability: "massCreate"
+            injectArgs: true
+            model: "App\\Models\\Event"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\FetchUserCalendarEventsMutation"
+        )
+
+    "Fetch and save authenticated user's sourced calendar events from Google Calendar to a specific pulse or all personal pulses"
+    fetchUserGoogleCalendarSourcedEvents(
+        input: FetchUserGoogleCalendarSourcedEventsInput
+    ): FetchUserGoogleCalendarSourcedEventsResponse!
+        @guard
+        @canModel(
+            ability: "massCreate"
+            injectArgs: true
+            model: "App\\Models\\Event"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\FetchUserGoogleCalendarSourcedEventsMutation"
+        )
+
+    importGoogleCalendarMeetings(
+        pulseId: String!
+        organizationId: String!
+    ): [MeetingSession!]!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\ImportGoogleCalendarMeetingsMutation"
+        )
+
+    updateMeetingSessionInvitePulse(
+        input: UpdateMeetingSessionInvitePulseInput!
+    ): MeetingSession!
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdateMeetingSessionInvitePulseMutation"
+        )
+
+    linkGoogleCalendar(
+        organizationId: ID!
+        email: String
+    ): GoogleCalendarLinkResponse!
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\LinkGoogleCalendar@__invoke")
+
+    "Sync a single event from Google Calendar to local database"
+    syncSingleEvent(
+        input: SyncSingleEventInput! @spread
+    ): SyncSingleEventResponse!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\Event"
+        )
+        @field(resolver: "App\\GraphQL\\Mutations\\SyncSingleEventMutation")
+
+    subscribeToWebPush(input: WebPushSubscriptionInput!): Boolean
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\PushSubscriptionMutation")
+
+    "Start OAuth 2.1 authorization flow for MCP server"
+    startMCPAuthorization(
+        "MCP server to connect to"
+        mcpServer: MCPServer!
+        "Optional OAuth redirect URI (defaults to application callback)"
+        redirectUri: String
+    ): MCPAuthorizationFlow!
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\StartMCPAuthorization")
+
+    "Complete OAuth 2.1 callback flow for MCP server"
+    completeMCPAuthorization(
+        "Authorization code from OAuth provider"
+        code: String!
+        "OAuth state parameter for validation"
+        state: String!
+    ): MCPCallbackResponse!
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\CompleteMCPAuthorization")
+
+    toggleTeamMessageReaction(
+        input: ToggleTeamMessageReactionInput! @spread
+    ): Boolean!
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\TeamMessage"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\ToggleTeamMessageReactionMutation"
+        )
+
+    toggleDirectMessageReaction(
+        input: ToggleDirectMessageReactionInput! @spread
+    ): Boolean!
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\DirectMessage"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\ToggleDirectMessageReactionMutation"
+        )
+
+    "Human in the loop mutation for mapping users to speakers"
+    humanInTheLoop(
+        bot_meeting_id: String! @rules(apply: ["required", "string"])
+        transcript_id: String! @rules(apply: ["required", "min:36", "max:36"])
+        maps: [UserSpeakerMapInput!]!
+    ): Boolean!
+        @guard
+        @field(resolver: "App\\GraphQL\\Mutations\\HumanInTheLoopMutation")
+
+    "Creates a notification preference for the authenticated user"
+    createNotificationPreference(
+        input: CreateNotificationPreferenceInput!
+    ): NotificationPreference!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\NotificationPreference"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateNotificationPreferenceMutation"
+        )
+}

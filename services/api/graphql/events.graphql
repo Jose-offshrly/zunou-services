@@ -1,0 +1,148 @@
+type Participant {
+    id: ID
+    name: String
+    email: String
+    gravatar: String!
+}
+
+type Event {
+    id: ID!
+    name: String!
+    date: String!
+    start_at: String!
+    end_at: String!
+    link: String
+    location: String
+    priority: EventPriority
+    attendees: [Attendee] @hasMany
+    guests: JSON
+    participants: [Participant!]!
+    description: String
+    files: JSON
+    pulse_id: ID!
+    organization_id: ID!
+    user_id: ID!
+    user: User
+    pulse: Pulse
+    organization: Organization
+    agendas: [Agenda!] @hasMany
+    google_event_id: String
+    meetingSession: MeetingSession @hasOne
+    currentMeetingSession: MeetingSession
+    meeting: Meeting @hasOne
+    actionables: [Actionable]
+    summary: String
+}
+
+type PaginatedEvents {
+    data: [Event!]!
+    paginatorInfo: PaginatorInfo!
+}
+
+type PaginatorInfo {
+    count: Int!
+    currentPage: Int!
+    firstItem: Int
+    hasMorePages: Boolean!
+    lastItem: Int
+    lastPage: Int!
+    perPage: Int!
+    total: Int!
+}
+
+enum EventSortOrder {
+    ASC @enum(value: "asc")
+    DESC @enum(value: "desc")
+}
+
+enum EventPriority @enum(class: "App\\Enums\\EventPriority") {
+    LOW
+    MEDIUM
+    HIGH
+    URGENT
+}
+
+input EventsInput {
+    organizationId: ID!
+        @rules(
+            apply: ["required", "min:36", "max:36", "exists:organizations,id"]
+        )
+    pulseId: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+    userId: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:users,id"])
+    dateRange: [String!]
+    search: String
+    sortOrder: EventSortOrder = ASC
+    page: Int = 1
+    perPage: Int = 10
+    hasMeetingSession: Boolean
+    hasMeetingSessionWithDataSource: Boolean
+    hasNoMeetingSession: Boolean
+}
+
+input CreateEventInput {
+    name: String!
+    date: String!
+    start_at: String!
+    end_at: String!
+    location: String
+    priority: EventPriority = MEDIUM
+    attendees: [String]
+    summary: String
+    files: [String]
+    pulse_id: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+    organization_id: ID!
+        @rules(
+            apply: ["required", "min:36", "max:36", "exists:organizations,id"]
+        )
+    user_id: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:users,id"])
+    create_event: Boolean!
+    invite_pulse: Boolean = false
+    description: String @rules(apply: ["nullable", "string", "max:1000"])
+}
+
+input UpdateEventInput {
+    id: ID!
+    name: String @rules(apply: ["string", "min:1", "max:255"])
+    date: String @rules(apply: ["date_format:Y-m-d H:i:s"])
+    start_at: String @rules(apply: ["date_format:Y-m-d H:i:s"])
+    end_at: String @rules(apply: ["date_format:Y-m-d H:i:s"])
+    location: String @rules(apply: ["string", "max:255"])
+    priority: EventPriority
+    guests: [String]
+    summary: String @rules(apply: ["string", "max:1000"])
+    description: String @rules(apply: ["nullable", "string", "max:1000"])
+    files: [String] @rules(apply: ["array"])
+    sync_with_google_calendar: Boolean = false
+    link: String @rules(apply: ["nullable", "string", "active_url"])
+}
+
+input CreateEventSummaryInput {
+    eventId: ID!
+    organizationId: ID!
+    pulseId: ID!
+}
+
+input AttachMeetingSessionToEventInput {
+    eventId: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:events,id"])
+        @rename(attribute: "event_id")
+    meetingSessionId: ID!
+        @rules(
+            apply: [
+                "required"
+                "min:36"
+                "max:36"
+                "exists:meeting_sessions,id"
+            ]
+        )
+        @rename(attribute: "meeting_session_id")
+}
+
+input GenerateEventBreakMessageInput {
+    previousEventId: ID!
+    nextEventId: ID!
+}

@@ -1,0 +1,107 @@
+"The status of the organization."
+enum OrganizationStatus {
+    ACTIVE
+    ONBOARDING_COMPLETE
+    ONBOARDING_DATA_SOURCES
+    ONBOARDING_SLACK
+    ONBOARDING_TERMS
+}
+
+"Input for creating organizations."
+input CreateOrganizationInput {
+    "The name of the organization."
+    name: String
+        @rules(
+            apply: ["min:5", "max:250", "unique:organizations,name", "required"]
+        )
+
+    "The email address of the organization'sowner."
+    ownerEmail: String @rules(apply: ["email", "min:5", "max:250"])
+
+    "The name of the organization'sowner."
+    ownerName: String @rules(apply: ["min:5", "max:250"])
+}
+
+"Input for updating organizations."
+input UpdateOrganizationInput {
+    "The ID of the organization to update"
+    organizationId: String! @rules(apply: ["required"])
+
+    "The name of the organization."
+    name: String @rules(apply: ["max:250"])
+
+    "The domain of the organization."
+    domain: String
+
+    "The industry of the organization."
+    industry: [String] @rules(apply: ["max:250"])
+
+    "The description of the organization."
+    description: String
+
+    "The S3 key that the data file was uploaded to."
+    fileKey: String @rename(attribute: "file_key") @rules(apply: ["max:250"])
+
+    "The file name of the data source"
+    fileName: String @rename(attribute: "file_name") @rules(apply: ["max:250"])
+
+    "The ID of the organization's Slack team"
+    slackTeamId: String
+        @rename(attribute: "slack_team_id")
+        @rules(apply: ["max:11", "unique:organizations,slack_team_id"])
+}
+
+"An organization that uses Zunou."
+type Organization {
+    "Timestamp when the organization was created."
+    createdAt: DateTime!
+
+    "Unique primary key."
+    id: UUID! @cacheKey
+
+    "Unique organization name."
+    name: String! @cache(maxAge: 300, private: true)
+
+    "The ID of the organization's Slack team"
+    slackTeamId: String @cache(maxAge: 300, private: true)
+
+    "The status of the organization"
+    status: OrganizationStatus! @cache(maxAge: 60, private: true)
+
+    "Status of the organization's Stripe billing subscription"
+    subscriptionStatus: String @cache(maxAge: 300, private: true)
+
+    "Timestamp when the organization was last updated."
+    updatedAt: DateTime!
+
+    "The ID of the head staff member in Zunou AI"
+    zunouAiStaffId: Int
+
+    "The ID of a user to use in Zunou AI"
+    zunouAiUserId: Int
+
+    "The domain of the organization"
+    domain: String @cache(maxAge: 600, private: true)
+
+    "The industry of the organization"
+    industry: [String] @cache(maxAge: 600, private: true)
+
+    "The metadata of the organization"
+    metadata: Metadata @cache(maxAge: 300, private: true)
+
+    "The description of the organization"
+    description: String @cache(maxAge: 600, private: true)
+
+    "The pulses of the organization"
+    pulses: [Pulse] @hasMany(defaultCount: 10, type: "PAGINATOR")
+
+    "determines if an organization has guest"
+    hasGuest: Boolean @cache(maxAge: 120, private: true)
+
+    logo: String @cache(maxAge: 600, private: true)
+}
+
+type OrganizationLogo {
+    url: String
+    fileName: String
+}

@@ -1,0 +1,9 @@
+{
+  "links": [
+    { "href": "/employee/benefits", "label": "Employee benefits" },
+    { "href": "/policy", "label": "Policies and Procedures" },
+    { "href": "/employee/finance", "label": "Payroll & Compensation" },
+    { "href": "/hr/career", "label": "Recruitment and Hiring" },
+    { "href": "/employee/training", "label": "Training & Development" }
+  ]
+}

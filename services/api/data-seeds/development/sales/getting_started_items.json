@@ -1,0 +1,29 @@
+[
+    {
+        "question": "What is the main sales strategy or approach your team follows when working with clients?"
+    },
+    {
+        "question": "What are the primary products or services your team focuses on selling, including key details (e.g., target market, pricing, support options)?"
+    },
+    {
+        "question": "What are the key criteria or steps your team uses to qualify sales leads before moving forward?"
+    },
+    {
+        "question": "What system does your team use to manage and document client interactions, and are there any guidelines for data entry?"
+    },
+    {
+        "question": "What are the key performance indicators (KPIs) your team tracks, such as revenue targets, closed deals, or client satisfaction scores?"
+    },
+    {
+        "question": "Does your team have access to specific pricing tiers or discount options, and if so, what are the conditions for applying them?"
+    },
+    {
+        "question": "Are there standard documents (e.g., proposals, contracts) or templates that your team frequently uses, and where are these stored?"
+    },
+    {
+        "question": "What are the unique selling points or competitive advantages your team should highlight in client conversations?"
+    },
+    {
+        "question": "If a question cannot be answered by the Sales Pulse, what is the preferred escalation process for your team?"
+    }
+]

@@ -1,0 +1,15 @@
+{
+  "name": "meet-bot",
+  "type": "module",
+  "version": "1.0.0",
+  "dependencies": {
+    "@paralleldrive/cuid2": "^2.2.2"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "syncpack": "^13.0.4"
+  }
+}

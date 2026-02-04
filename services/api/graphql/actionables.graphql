@@ -1,0 +1,77 @@
+"An actionable resource"
+type Actionable {
+    id: ID!
+    description: String!
+    pulse_id: ID!
+    organization_id: ID!
+    event_id: ID
+    task_id: ID
+    status: String
+    pulse: Pulse!
+    organization: Organization!
+    event: Event
+    task: Task
+    created_at: DateTime!
+    updated_at: DateTime!
+}
+
+input CreateActionableInput {
+    description: String!
+    pulse_id: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:pulses,id"
+        ])
+    organization_id: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:organizations,id"
+        ])
+    data_source_id: ID
+        @rules(apply: [
+            "min:36" 
+            "max:36"
+            "exists:data_sources,id"
+        ])
+    event_id: ID
+        @rules(apply: [
+            "min:36" 
+            "max:36"
+            "exists:events,id"
+        ])
+    task_id: ID
+        @rules(apply: [
+            "min:36" 
+            "max:36"
+            "exists:tasks,id"
+        ])
+    status: String
+}
+
+input UpdateActionableInput {
+    id: ID! @whereKey
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:actionables,id"
+        ])
+    description: String
+    event_id: ID
+        @rules(apply: [
+            "min:36" 
+            "max:36"
+            "exists:events,id"
+        ])
+    task_id: ID
+        @rules(apply: [
+            "min:36" 
+            "max:36"
+            "exists:tasks,id"
+        ])
+    status: String
+}

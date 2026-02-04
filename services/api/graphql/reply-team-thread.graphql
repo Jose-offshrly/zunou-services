@@ -1,0 +1,81 @@
+"Input for creating reply team threads."
+input CreateReplyTeamThreadInput {
+    teamThreadId: ID! @rules(apply: ["required", "exists:team_threads,id"])
+    topicId: ID @rules(apply: ["nullable", "exists:topics,id"])
+    userId: ID! @rules(apply: ["required", "exists:users,id"])
+    content: String! @rules(apply: ["required", "string", "max:5000"])
+    metadata: TeamMessageMetadataInput @rules(apply: ["nullable"])
+    pulseId: ID!
+        @rename(attribute: "pulse_id")
+        @rules(apply: ["required", "exists:pulses,id"])
+    organizationId: ID!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["required", "exists:organizations,id"])
+}
+
+"Reply team thread resource"
+type ReplyTeamThread {
+    id: ID!
+    teamThreadId: ID!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+"Input for reply team thread messages pagination."
+input ReplyTeamThreadPaginationInput {
+    replyTeamThreadId: ID!
+        @rules(apply: [
+            "required"
+            "min:36"
+            "max:36"
+            "exists:reply_team_threads,id"
+        ])
+    pulseId: ID!
+        @rules(apply: [
+            "required"
+            "min:36"
+            "max:36"
+            "exists:pulses,id"
+        ])
+        @rename(attribute: "pulse_id")
+    organizationId: ID!
+        @rules(apply: [
+            "required"
+            "min:36"
+            "max:36"
+            "exists:organizations,id"
+        ])
+        @rename(attribute: "organization_id")
+    page: Int = 1
+}
+
+"Reply team thread resource"
+type ReplyTeamThread {
+    id: ID!
+    teamThreadId: ID!
+    userId: ID!
+    replyTeamThreadId: ID
+    repliedToMessageId: ID
+    isParentReply: Boolean!
+    content: String!
+    metadata: TeamMessageMetadata
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    isDeleted: Boolean!
+    deletedAt: DateTime
+    isEdited: Boolean!
+    files: [File!]
+    groupedReactions: [TeamMessageGroupedReaction!]!
+        @field(resolver: "App\\GraphQL\\Queries\\TeamMessageGroupedReactionsQuery")
+    user: User @belongsTo
+    isRead: Boolean!
+        @field(resolver: "App\\GraphQL\\Queries\\TeamMessageReadQuery")
+    isPinned: Boolean!
+    repliedToMessage: TeamMessage @belongsTo
+}
+
+"Paginated result of reply team threads"
+type ReplyTeamThreadPaginator {
+    data: [ReplyTeamThread!]!
+    paginatorInfo: PaginatorInfo!
+}

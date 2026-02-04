@@ -1,0 +1,32 @@
+{
+  "summaries": [
+    {
+      "title": "Total Money Saved",
+      "value": 10532,
+      "unit": "$",
+      "comparisonValue": 14,
+      "comparison": "more"
+    },
+    {
+      "title": "Total Time Saved",
+      "value": 632,
+      "unit": "mins",
+      "comparisonValue": 11,
+      "comparison": "more"
+    },
+    {
+      "title": "Questions answered",
+      "value": 9034,
+      "unit": null,
+      "comparisonValue": 9,
+      "comparison": "more"
+    },
+    {
+      "title": "Number of Staff Engaged",
+      "value": 32,
+      "unit": null,
+      "comparisonValue": 3,
+      "comparison": "less"
+    }
+  ]
+}

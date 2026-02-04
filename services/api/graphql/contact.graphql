@@ -1,0 +1,83 @@
+ "A Contact resource"
+type Contact {
+    id: ID!
+    name: String!
+    email: String
+    alt_email: String
+    telephone_number: String
+    alt_telephone_number: String
+    settings: JSON
+    details: String
+    owners: [User!]! @belongsToMany
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    deletedAt: DateTime
+}
+
+input SettingsEntryInput {
+    key: String!
+    value: String!
+}
+
+input CreateContactInput {
+    name: String!
+        @rules(apply: ["required", "string", "min:1", "max:255"])
+
+    email: String
+        @rules(apply: ["nullable", "email", "max:255"])
+
+    alt_email: String
+        @rules(apply: ["nullable", "email", "max:255"])
+
+    telephone_number: String
+        @rules(apply: ["nullable", "string", "min:1", "max:50"])
+
+    alt_telephone_number: String
+        @rules(apply: ["nullable", "string", "max:50"])
+
+    settings: [SettingsEntryInput!]
+        @rules(apply: ["nullable", "array"])
+
+    details: String
+        @rules(apply: ["nullable", "string"])
+}
+
+input UpdateContactInput {
+    contactId: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:contacts,id"])
+
+    name: String
+        @rules(apply: ["nullable", "string", "min:1", "max:255"])
+
+    email: String
+        @rules(apply: ["nullable", "email", "max:255"])
+
+    alt_email: String
+        @rules(apply: ["nullable", "email", "max:255"])
+
+    telephone_number: String
+        @rules(apply: ["nullable", "string", "min:1", "max:50"])
+
+    alt_telephone_number: String
+        @rules(apply: ["nullable", "string", "max:50"])
+
+    settings: [SettingsEntryInput!]
+        @rules(apply: ["nullable", "array"])
+
+    details: String
+        @rules(apply: ["nullable", "string"])
+}
+
+input AttachContactToUserInput {
+    contactId: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:contacts,id"])
+
+    userId: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:users,id"])
+}
+
+input DeleteContactInput {
+    contactId: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:contacts,id"])
+}
+

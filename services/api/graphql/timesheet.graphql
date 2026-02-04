@@ -1,0 +1,22 @@
+type Timesheet {
+    id: ID!
+    userId: String!
+    checked_in_at: DateTime!
+    checked_out_at: DateTime
+    total: Float
+    user: User
+    created_at: DateTime!
+    updated_at: DateTime!
+}
+
+"Input for updating a timesheet"
+input UpdateTimesheetInput {
+    "The ID of the timesheet to update"
+    id: ID!
+
+    "The check-in time for the timesheet"
+    checked_in_at: DateTime
+
+    "The check-out time for the timesheet"
+    checked_out_at: DateTime
+}

@@ -1,0 +1,48 @@
+enum CollaborationStatus @enum(class: "App\\Enums\\CollaborationStatus") {
+    LIVE
+    ENDED
+}
+
+"Input for creating a pulse feed."
+input CreateCollaborationInput {
+    name: String!
+    description: String!
+    attendees: [String]!
+    external_attendees: [String]
+    meeting_type: MeetingType
+    pulseId: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:pulses,id"
+        ])
+    organizationId: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:organizations,id"
+        ])
+    invite_pulse: Boolean!
+}
+
+"Input for updating collaboration"
+input UpdateCollaborationInput {
+    collaborationId: ID!
+    status: CollaborationStatus!
+}
+
+"A Collaboration resource"
+type Collaboration {
+    id: ID!
+    name: String!
+    description: String!
+    start_at: String!
+    end_at: String!
+    attendees: [Attendee]!
+    meeting_link: String!
+    status: CollaborationStatus!
+    pulseId: ID!
+    organizationId: ID!
+}

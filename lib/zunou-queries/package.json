@@ -1,0 +1,35 @@
+{
+  "name": "zunou-queries",
+  "version": "0.0.0",
+  "dependencies": {
+    "@tanstack/react-query": "^5.28.4",
+    "graphql": "^16.8.1",
+    "graphql-request": "^6.1.0",
+    "graphql-ws": "^5.16.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.7.0",
+    "@typescript-eslint/parser": "^7.7.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-config-typescript": "^3.0.0",
+    "eslint-import-resolver-typescript": "^3.6.1",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jsx-a11y": "^6.6.1",
+    "eslint-plugin-prettier": "^5.0.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-sort-keys-fix": "^1.1.2",
+    "prettier": "^3.2.5",
+    "prettier-eslint": "^16.3.0",
+    "ts-unused-exports": "^10.0.1",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0 <22"
+  },
+  "private": true,
+  "type": "module"
+}

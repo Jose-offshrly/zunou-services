@@ -1,0 +1,30 @@
+enum ReminderRequestOrigin {
+    APP
+    SCHEDULE
+}
+
+input ReminderInput {
+    organizationId: ID! @rules(
+        apply: [
+            "min:36"
+            "max:36"
+            "required"
+            "exists:organizations,id"
+        ]
+    )
+    pulseId: ID! @rules(
+        apply: [
+            "min:36"
+            "max:36"
+            "required"
+            "exists:pulses,id"
+        ]
+    )
+    origin: ReminderRequestOrigin!
+    refresh: Boolean = false
+    eventsFocus: [String!]
+    eventsConsider: [String!]
+    dateRangeFocus: [String!]
+    dateRangeConsider: [String!]
+    context: String
+}

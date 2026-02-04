@@ -1,0 +1,57 @@
+{
+  "branches": [
+    "production",
+    { "name": "staging", "prerelease": true }
+  ],
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          {
+            "release": "patch",
+            "scope": "deps",
+            "type": "build"
+          }
+        ]
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
+        "presetConfig": {
+          "types": [
+            {
+              "section": "Features",
+              "type": "feat"
+            },
+            {
+              "section": "Bug Fixes",
+              "type": "fix"
+            },
+            {
+              "hidden": false,
+              "section": "Dependencies",
+              "type": "deps"
+            }
+          ]
+        }
+      }
+    ],
+    "@semantic-release/changelog",
+    [
+      "@semantic-release/npm",
+      {
+        "npmPublish": false
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "verifyReleaseCmd": "echo ${nextRelease.version} > .VERSION"
+      }
+    ]
+  ]
+}

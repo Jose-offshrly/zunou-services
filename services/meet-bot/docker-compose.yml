@@ -1,0 +1,106 @@
+services:
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - '4566:4566'
+    environment:
+      - SERVICES=s3,dynamodb,lambda,sqs,scheduler
+      - DEBUG=1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=us-east-1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - ./meetbot-trigger-lambda/meetbot_trigger_lambda_function.zip:/lambda/meetbot_trigger_lambda_function.zip
+      - ./meetbot-results-lambda/meetbot_results_lambda_function.zip:/lambda/meetbot_results_lambda_function.zip
+      - ./.localstack:/etc/localstack/init/ready.d
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - localstack-network
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - '5672:5672' # AMQP protocol port
+      - '15672:15672' # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - localstack-network
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  gmeetrecorder:
+    image: meetbot/gmeetrecorder:latest
+    build:
+      context: ./meeting-recorder/google-meets
+    # Enable better network connectivity
+    sysctls:
+      - net.ipv4.tcp_keepalive_time=60
+      - net.ipv4.tcp_keepalive_intvl=10
+      - net.ipv4.tcp_keepalive_probes=6
+    env_file:
+      - ./meeting-recorder/google-meets/.env
+    environment: &env_vars
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: us-east-1
+      DYNAMODB_ENDPOINT: http://localstack:4566
+      S3_ENDPOINT: http://localstack:4566
+      SQS_ENDPOINT: http://localstack:4566
+      SCHEDULER_ENDPOINT: http://localstack:4566
+      ENVIRONMENT: development
+      NODE_ENV: development
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672
+      DYNAMODB_TABLE: meet-bot-local
+      DYNAMODB_RECORDINGS_TABLE: meet-bot-local
+      MEET_BOT_S3_BUCKET: meet-bot-local
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+      RECORD_VIDEO: no
+      # Assembly.ai configuration - ensure no proxy interference
+      NO_PROXY: localhost,127.0.0.1,localstack,rabbitmq
+      # Node.js network configuration for WebSocket connections
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
+      UV_THREADPOOL_SIZE: 128
+    dns:
+      - 8.8.8.8  # Google DNS for reliable resolution
+      - 1.1.1.1  # Cloudflare DNS as backup
+    volumes:
+      - ./meeting-recorder/google-meets/recordings:/home/pulseuser/app/recordings
+    networks:
+      - localstack-network
+    depends_on:
+      - localstack
+      - rabbitmq
+
+  scheduler:
+    image: meetbot/scheduler:latest
+    build:
+      context: ./scheduler-service
+    environment:
+      <<: *env_vars
+      LAMBDA_TRIGGER_ARN: arn:aws:lambda:us-east-1:000000000000:function:MeetBotTrigger-local
+      SQS_QUEUE_URL: http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/meet-bot-trigger-local
+      SCHEDULER_ROLE_ARN: arn:aws:iam::000000000000:role/scheduler-local
+      PORT: 8000
+    ports:
+      - '8000:8000'
+    volumes:
+      - ./meeting-recorder/google-meets/recordings:/app/meeting-recorder/google-meets/recordings
+    networks:
+      - localstack-network
+    depends_on:
+      - localstack
+      - rabbitmq
+
+networks:
+  localstack-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-meetbot
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.driver.mtu: "1500"
+
+volumes:
+  rabbitmq-data:

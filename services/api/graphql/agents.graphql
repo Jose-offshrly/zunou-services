@@ -1,0 +1,61 @@
+"The type of file being uploaded."
+enum AgentName {
+    Concierge @enum(value: "concierge")
+}
+
+"Input for creating agents."
+input CreateAgentInput {
+    "The name of the agent."
+    name: AgentName! @rules(apply: ["required"])
+
+    "The prompt."
+    prompt: String @rules(apply: ["min:5", "max:10000", "required"])
+
+    "The organization that agent belongs to."
+    organizationId: String
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required", "exists:organizations,id"])
+
+    "The organization that agent belongs to."
+    pulseId: String
+        @rename(attribute: "pulse_id")
+        @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+}
+
+"Input for updating agents."
+input UpdateAgentInput {
+    "The ID of the agent to update"
+    id: String! @rules(apply: ["required"])
+
+    "The prompt."
+    prompt: String @rules(apply: ["min:5", "max:10000", "required"])
+
+    "The organization that agent belongs to."
+    organizationId: String!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required"])
+}
+
+"An agent belonging to a Zunou organization."
+type Agent {
+    "Timestamp when the agent was created."
+    createdAt: DateTime!
+
+    "Unique primary key."
+    id: UUID!
+
+    "The name of the agent"
+    name: AgentName!
+
+    "The associated organization"
+    organization: Organization @belongsTo
+
+    "The ID of the organization"
+    organizationId: UUID
+
+    "The prompt"
+    prompt: String!
+
+    "Timestamp when the agent was last updated."
+    updatedAt: DateTime!
+}

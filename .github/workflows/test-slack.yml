@@ -1,0 +1,70 @@
+name: slack (test)
+
+# Cancel in-progress jobs.
+concurrency:
+  group:              slack-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    # Only run tests on pull requests.
+    branches-ignore:
+      - 'main'
+      - 'production' 
+      - 'production-candidate-*' 
+    paths:
+      - .github/workflows/test-slack.yml
+      - lib/zunou-graphql/**
+      - lib/zunou-queries/**
+      - services/slack/**
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    outputs:
+      status: ${{ steps.changes.conclusion }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: dorny/paths-filter@v3
+      id: changes
+      with:
+        filters: |
+          slack:
+            - .github/workflows/test-slack.yml
+            - lib/zunou-graphql/**
+            - lib/zunou-queries/**
+            - services/slack/**
+
+    - name: Check service changed
+      if:  steps.changes.outputs.slack == 'true'
+      run: echo "Service has changed - running CI" # exit_with_success
+
+  slack:
+    runs-on: ubuntu-latest
+
+    needs: check
+    if:    needs.check.outputs.status == 'success'
+
+    defaults:
+      run:
+        working-directory: services/slack
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Install packages
+      run: yarn install
+
+    - name: Lint
+      run: make lint
+
+    - name: Format
+      run: make lint-fix && make prettier-fix && git checkout ../../yarn.lock && git diff --exit-code

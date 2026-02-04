@@ -1,0 +1,31 @@
+VERSION 0.6
+
+FROM python:3.9.13-alpine3.16
+WORKDIR /app
+
+# Installs the dependencies and libraries.
+deps:
+  RUN apk add --no-cache \
+      bash \
+      curl \
+      git \
+      nodejs \
+      npm \
+      terraform \
+      unzip
+
+  RUN npm install -g prettyjson
+  RUN curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+# Formats the source files.
+format:
+  LOCALLY
+
+  RUN terraform fmt -write -recursive
+
+# Lints the source files.
+lint:
+  FROM +deps
+
+  RUN tflint --init
+  RUN TFLINT_LOG=warn tflint --call-module-type=all

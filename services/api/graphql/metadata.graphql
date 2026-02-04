@@ -1,0 +1,9 @@
+type Metadata {
+    fileKey: String
+    fileName: String
+}
+
+input MetadataInput {
+    fileKey: String
+    fileName: String
+}

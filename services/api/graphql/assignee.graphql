@@ -1,0 +1,5 @@
+"A assignee resource"
+type Assignee {
+    id: ID!
+    user: User! @belongsTo
+}

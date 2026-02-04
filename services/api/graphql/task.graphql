@@ -1,0 +1,279 @@
+enum TaskStatus @enum(class: "App\\Enums\\TaskStatus") {
+    TODO
+    INPROGRESS
+    COMPLETED
+    OVERDUE
+}
+
+enum TaskPriority @enum(class: "App\\Enums\\TaskPriority") {
+    URGENT
+    HIGH
+    MEDIUM
+    LOW
+}
+
+enum TaskType @enum(class: "App\\Enums\\TaskType") {
+    TASK
+    LIST
+    MILESTONE
+}
+
+enum TaskEntity {
+    PULSE
+}
+
+enum TaskOrder {
+    TITLE_ASC
+    TITLE_DESC
+    PRIORITY_ASC
+    PRIORITY_DESC
+    STATUS_ASC
+    STATUS_DESC
+    DUE_DATE_ASC
+    DUE_DATE_DESC
+    ASSIGNEE_ASC
+    ASSIGNEE_DESC
+    CREATED_AT_ASC
+    CREATED_AT_DESC
+    UPDATED_AT_ASC
+    UPDATED_AT_DESC
+}
+
+enum TaskSource @enum(class: "App\\Enums\\TaskSource") {
+    MEETING
+}
+"Input for creating a task."
+input CreateTaskInput @validator {
+    title: String!
+    organization_id: ID!
+        @rules(
+            apply: ["required", "min:36", "max:36", "exists:organizations,id"]
+        )
+    entity_id: ID! @rules(apply: ["required", "min:36", "max:36"])
+    entity_type: TaskEntity!
+    task_type: TaskType!
+    description: String
+    assignees: [ID] @rulesForArray(apply: ["exists:users,id"])
+    category_id: ID @rules(apply: ["min:36", "max:36", "exists:categories,id"])
+    status: TaskStatus
+    priority: TaskPriority
+    due_date: String
+    start_date: String
+    task_phase_id: ID
+        @rules(apply: ["min:36", "max:36", "exists:task_phases,id"])
+    task_status_id: ID
+        @rules(apply: ["min:36", "max:36", "exists:task_statuses,id"])
+    progress: String
+    color: String
+    parent_id: ID @rules(apply: ["min:36", "max:36", "exists:tasks,id"])
+    source: Source
+    dependency_task_ids: [ID] @rulesForArray(apply: ["exists:tasks,id"])
+}
+
+"Input for updating a task."
+input UpdateTaskInput @validator {
+    taskId: ID!
+    title: String!
+    description: String
+    assignees: [ID!]
+    category_id: ID
+    organization_id: ID!
+    status: TaskStatus
+    priority: TaskPriority
+    due_date: String
+    start_date: String
+    task_phase_id: ID
+        @rules(apply: ["min:36", "max:36", "exists:task_phases,id"])
+    task_status_id: ID
+        @rules(apply: ["min:36", "max:36", "exists:task_statuses,id"])
+    progress: String
+    color: String
+    parent_id: String
+    dependency_task_ids: [ID] @rulesForArray(apply: ["exists:tasks,id"])
+}
+
+"Input for updating the status of a task."
+input UpdateTaskStatusInput {
+    taskId: ID!
+    organization_id: ID!
+    status: TaskStatus
+    task_status_id: String
+        @rules(
+            apply: ["nullable", "min:36", "max:36", "exists:task_statuses,id"]
+        )
+}
+
+input TaskOrderInput {
+    taskId: ID!
+    parentId: ID
+    order: String!
+    organizationId: ID!
+}
+
+input GenerateEntitiesFromTextInput {
+    input: String!
+    fields: String!
+}
+
+input DateRangeInput {
+    from: Date
+    to: Date
+}
+
+input Source {
+    type: TaskSource
+    id: String
+}
+
+"Input for creating task list actions."
+input CreateAssistantTaskListActionsInput {
+    "ID of the task list"
+    taskListId: String!
+        @rules(apply: ["required", "min:36", "max:36", "exists:tasks,id"])
+
+    "ID of the thread to send the summary to"
+    threadId: String!
+        @rules(apply: ["required", "min:36", "max:36", "exists:threads,id"])
+}
+
+"Input for creating smart tasks from transcript."
+input CreateSmartTasksInput {
+    "ID of existing task list to use (optional). If not provided, creates new list."
+    task_list_id: ID @rules(apply: ["min:36", "max:36", "exists:tasks,id"])
+
+    "Name of the task list (required only when creating new list)"
+    task_list_name: String
+
+    "Transcript containing tasks, one per line"
+    transcript: String!
+
+    "Organization ID"
+    organization_id: ID!
+        @rules(
+            apply: ["required", "min:36", "max:36", "exists:organizations,id"]
+        )
+
+    "Entity ID (e.g., Pulse ID)"
+    entity_id: ID! @rules(apply: ["required", "min:36", "max:36"])
+
+    "Entity type"
+    entity_type: TaskEntity!
+}
+
+"Input for creating a task phase"
+input CreateTaskPhaseInput {
+    pulse_id: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+    label: String! @rules(apply: ["required", "string", "max:255"])
+    color: String @rules(apply: ["nullable", "string", "max:50"])
+}
+
+"Input for updating a task phase"
+input UpdateTaskPhaseInput {
+    id: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:task_phases,id"])
+    label: String @rules(apply: ["nullable", "string", "max:255"])
+    color: String @rules(apply: ["nullable", "string", "max:50"])
+}
+
+"Input for creating a pulse task status"
+input CreatePulseTaskStatusInput {
+    pulse_id: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+    label: String! @rules(apply: ["required", "string", "max:255"])
+    color: String @rules(apply: ["nullable", "string", "max:50"])
+    position: Int @rules(apply: ["nullable", "integer"])
+}
+
+"Input for updating a pulse task status"
+input UpdatePulseTaskStatusInput {
+    id: ID!
+        @rules(
+            apply: ["required", "min:36", "max:36", "exists:task_statuses,id"]
+        )
+    label: String @rules(apply: ["nullable", "string", "max:255"])
+    color: String @rules(apply: ["nullable", "string", "max:50"])
+    position: Int @rules(apply: ["nullable", "integer"])
+}
+
+"Input for deleting a pulse task status"
+input DeletePulseTaskStatusInput {
+    id: ID!
+        @rules(
+            apply: ["required", "min:36", "max:36", "exists:task_statuses,id"]
+        )
+}
+
+"Input for updating task status order"
+input TaskStatusOrderInput {
+    id: ID!
+        @rules(
+            apply: ["required", "min:36", "max:36", "exists:task_statuses,id"]
+        )
+    position: Int! @rules(apply: ["required", "integer", "min:0"])
+}
+
+"A TaskPhase resource"
+type TaskPhaseType {
+    id: ID!
+    pulse_id: ID!
+    label: String!
+    color: String
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+"A TaskStatus resource"
+type TaskStatusType {
+    id: ID!
+    pulse_id: ID
+    label: String!
+    color: String
+    type: String
+    position: Int
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+"A Task resource"
+type Task {
+    id: ID!
+    task_number: String
+    title: String!
+    description: String
+    assignees: [Assignee!] @hasMany
+    organization: Organization!
+    entity_id: ID!
+    entity_type: String!
+    category: Category
+    status: TaskStatus
+    priority: TaskPriority
+    start_date: String
+    due_date: String
+    task_phase_id: ID
+    task_status_id: ID
+    taskPhase: TaskPhaseType
+    taskStatus: TaskStatusType
+    progress: String
+    color: String
+    type: TaskType
+    parent: Task @belongsTo
+    children(
+        assigneeId: String @whereAssignee
+        priority: TaskPriority @wherePriority
+        status: TaskStatus @whereStatus
+        date: Date @whereDueDate
+        dateRange: DateRangeInput @whereDueDateRange
+        search: String @whereSearch
+    ): [Task!]
+        @field(resolver: "App\\GraphQL\\Resolvers\\TaskFieldResolver@children")
+    dependencies: [Task!] @belongsToMany
+    dependents: [Task!] @belongsToMany
+    order: String
+    completed_children_count: Int
+    entity: Pulse
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    createdBy: User
+    updatedBy: User
+}

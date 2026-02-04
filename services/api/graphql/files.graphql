@@ -1,0 +1,86 @@
+"A file object."
+type File {
+    id: ID!
+    path: String!
+    file_name: String
+    type: String
+    size: Int
+    entity_type: String!
+    entity_id: String!
+    pulse_id: ID
+    organization_id: ID!
+    created_at: DateTime!
+    updated_at: DateTime!
+    dataSourceId: String @rename(attribute: "data_source_id")
+    dataSource: DataSource @belongsTo(relation: "data_source")
+    url: String
+}
+
+"A signed download URL"
+type DownloadUrl {
+    "The signed URL linking to the download"
+    url: String!
+}
+
+"The type of file being uploaded."
+enum FileType {
+    CSV @enum(value: "csv")
+    Doc @enum(value: "doc")
+    Docx @enum(value: "docx")
+    Html @enum(value: "html")
+    Markdown @enum(value: "markdown")
+    Pdf @enum(value: "pdf")
+    Ppt @enum(value: "ppt")
+    Pptx @enum(value: "pptx")
+    Rtf @enum(value: "rtf")
+    Txt @enum(value: "txt")
+    Xls @enum(value: "xls")
+    Xlsx @enum(value: "xlsx")
+    Mp4 @enum(value: "mp4")
+    Jpg @enum(value: "jpg")
+    Png @enum(value: "png")
+    Svg @enum(value: "svg")
+    Webp @enum(value: "webp")
+}
+
+"The type of file being uploaded."
+enum UploadType {
+    DATA_SOURCE
+    ASSET
+}
+
+"Input for generating download credentials for Data Scientist files on S3"
+input GenerateDataScientistDownloadLinkInput {
+    "The path to the file to download."
+    filePath: String @rules(apply: ["required"])
+}
+
+"Input for generating download credentials for Data Source files on S3"
+input GenerateDataSourceDownloadLinkInput {
+    "The ID of the data source to download."
+    dataSourceId: String @rules(apply: ["min:36", "max:36", "required"])
+
+    "The organization that owns the file"
+    organizationId: String @rules(apply: ["min:36", "max:36", "required"])
+}
+
+"Input for generating upload credentials for S3"
+input GenerateUploadCredentialsInput {
+    "The type of file being uploaded."
+    fileType: FileType @rules(apply: ["required"])
+
+    "The type of upload being generated."
+    uploadType: UploadType = DATA_SOURCE @rules(apply: ["required"])
+
+    "The organization that owns the file"
+    organizationId: String @rules(apply: ["min:36", "max:36", "required"])
+}
+
+"Credentials allowing users to upload files"
+type UploadCredentials {
+    "The S3 key that the file will be uploaded to"
+    key: String!
+
+    "A signed URL suitable for uploading files to S3"
+    url: String!
+}

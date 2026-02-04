@@ -1,0 +1,5 @@
+"A attendee resource"
+type Attendee {
+    id: ID!
+    user: User! @belongsTo
+}

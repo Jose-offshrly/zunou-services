@@ -1,0 +1,37 @@
+enum NotificationPreferenceScopeType
+    @enum(class: "App\\Enums\\NotificationPreferenceScopeType") {
+    global
+    pulse
+    topic
+}
+
+enum NotificationPreferenceMode
+    @enum(class: "App\\Enums\\NotificationPreferenceMode") {
+    all
+    mentions
+    off
+}
+
+type NotificationPreference {
+    id: ID!
+    user: User! @belongsTo
+    scopeType: NotificationPreferenceScopeType! @rename(attribute: "scope_type")
+    scopeId: ID @rename(attribute: "scope_id")
+    mode: NotificationPreferenceMode!
+    createdAt: DateTime! @rename(attribute: "created_at")
+    updatedAt: DateTime! @rename(attribute: "updated_at")
+
+    pulse: Pulse @belongsTo
+    topic: Topic @belongsTo
+}
+
+input CreateNotificationPreferenceInput {
+    scopeType: NotificationPreferenceScopeType!
+        @rules(apply: ["required"])
+
+    scopeId: ID
+        @rules(apply: ["nullable", "min:36", "max:36"])
+
+    mode: NotificationPreferenceMode!
+        @rules(apply: ["required"])
+}

@@ -1,0 +1,46 @@
+"Represents a live upload."
+type LiveUpload {
+    id: ID!
+    fileKey: String!
+    userId: ID!
+    organizationId: ID!
+    threadId: ID!
+    status: String!
+    fullContent: String
+    summaryContent: String
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+"Input for creating a new live upload."
+input CreateLiveUploadInput {
+    "The key of the file stored in S3."
+    fileKey: String!
+
+    "The ID of the user uploading the file."
+    userId: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:users,id"
+        ])
+
+    "The ID of the organization."
+    organizationId: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:organizations,id"
+        ])
+
+    "The ID of the thread."
+    threadId: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:threads,id"
+        ])
+}

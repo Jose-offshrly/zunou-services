@@ -1,0 +1,30 @@
+{
+  "name": "error-assistant",
+  "version": "1.0.0",
+  "description": "Lambda: gathers error log + all logs from that request for AI context",
+  "type": "module",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudwatch-logs": "^3.700.0",
+    "@aws-sdk/client-ses": "^3.700.0",
+    "@aws-sdk/client-s3": "^3.700.0",
+    "isomorphic-git": "^1.25.0",
+    "chalk": "^5.3.0",
+    "mailtrap": "^3.0.0",
+    "openai": "^4.73.0",
+    "glob": "^10.3.10",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.5",
+    "jest": "^29.7.0"
+  },
+  "private": true
+}

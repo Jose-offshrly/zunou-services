@@ -1,0 +1,5 @@
+"A category resource"
+type Category {
+    id: ID!
+    name: String! @cache(maxAge: 600, private: true)
+}

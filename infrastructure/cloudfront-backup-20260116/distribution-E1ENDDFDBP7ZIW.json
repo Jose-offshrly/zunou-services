@@ -1,0 +1,130 @@
+{
+    "ETag": "E3V9L267FAK7PJ",
+    "Distribution": {
+        "Id": "E1ENDDFDBP7ZIW",
+        "ARN": "arn:aws:cloudfront::322607082550:distribution/E1ENDDFDBP7ZIW",
+        "Status": "Deployed",
+        "LastModifiedTime": "2025-06-30T13:13:30.876000+00:00",
+        "InProgressInvalidationBatches": 0,
+        "DomainName": "d1ek0f8xp6ofmq.cloudfront.net",
+        "ActiveTrustedSigners": {
+            "Enabled": false,
+            "Quantity": 0
+        },
+        "ActiveTrustedKeyGroups": {
+            "Enabled": false,
+            "Quantity": 0
+        },
+        "DistributionConfig": {
+            "CallerReference": "b3bf487c-3012-474f-8c03-2e4ba2bac078",
+            "Aliases": {
+                "Quantity": 1,
+                "Items": [
+                    "downloads.zunou.ai"
+                ]
+            },
+            "DefaultRootObject": "",
+            "Origins": {
+                "Quantity": 1,
+                "Items": [
+                    {
+                        "Id": "downloads.zunou.ai.s3.us-east-1.amazonaws.com-mcj4brnte1e",
+                        "DomainName": "downloads.zunou.ai.s3.us-east-1.amazonaws.com",
+                        "OriginPath": "",
+                        "CustomHeaders": {
+                            "Quantity": 0
+                        },
+                        "S3OriginConfig": {
+                            "OriginAccessIdentity": ""
+                        },
+                        "ConnectionAttempts": 3,
+                        "ConnectionTimeout": 10,
+                        "OriginShield": {
+                            "Enabled": false
+                        },
+                        "OriginAccessControlId": "E3UBCAO8BD0FRB"
+                    }
+                ]
+            },
+            "OriginGroups": {
+                "Quantity": 0
+            },
+            "DefaultCacheBehavior": {
+                "TargetOriginId": "downloads.zunou.ai.s3.us-east-1.amazonaws.com-mcj4brnte1e",
+                "TrustedSigners": {
+                    "Enabled": false,
+                    "Quantity": 0
+                },
+                "TrustedKeyGroups": {
+                    "Enabled": false,
+                    "Quantity": 0
+                },
+                "ViewerProtocolPolicy": "redirect-to-https",
+                "AllowedMethods": {
+                    "Quantity": 2,
+                    "Items": [
+                        "HEAD",
+                        "GET"
+                    ],
+                    "CachedMethods": {
+                        "Quantity": 2,
+                        "Items": [
+                            "HEAD",
+                            "GET"
+                        ]
+                    }
+                },
+                "SmoothStreaming": false,
+                "Compress": true,
+                "LambdaFunctionAssociations": {
+                    "Quantity": 0
+                },
+                "FunctionAssociations": {
+                    "Quantity": 0
+                },
+                "FieldLevelEncryptionId": "",
+                "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+            },
+            "CacheBehaviors": {
+                "Quantity": 0
+            },
+            "CustomErrorResponses": {
+                "Quantity": 0
+            },
+            "Comment": "",
+            "Logging": {
+                "Enabled": false,
+                "IncludeCookies": false,
+                "Bucket": "",
+                "Prefix": ""
+            },
+            "PriceClass": "PriceClass_All",
+            "Enabled": true,
+            "ViewerCertificate": {
+                "CloudFrontDefaultCertificate": false,
+                "ACMCertificateArn": "arn:aws:acm:us-east-1:322607082550:certificate/741ba8e8-e502-479b-a3a1-8356ed2c1399",
+                "SSLSupportMethod": "sni-only",
+                "MinimumProtocolVersion": "TLSv1.2_2021",
+                "Certificate": "arn:aws:acm:us-east-1:322607082550:certificate/741ba8e8-e502-479b-a3a1-8356ed2c1399",
+                "CertificateSource": "acm"
+            },
+            "Restrictions": {
+                "GeoRestriction": {
+                    "RestrictionType": "none",
+                    "Quantity": 0
+                }
+            },
+            "WebACLId": "",
+            "HttpVersion": "http2",
+            "IsIPV6Enabled": true,
+            "ContinuousDeploymentPolicyId": "",
+            "Staging": false
+        },
+        "AliasICPRecordals": [
+            {
+                "CNAME": "downloads.zunou.ai",
+                "ICPRecordalStatus": "APPROVED"
+            }
+        ]
+    }
+}

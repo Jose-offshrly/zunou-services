@@ -1,0 +1,106 @@
+type GoogleCalendarEvent {
+    id: String!
+    summary: String!
+    description: String
+    location: String
+    start: GoogleCalendarDateTime!
+    end: GoogleCalendarDateTime!
+    attendees: [GoogleCalendarAttendee!]
+    conferenceData: GoogleCalendarConferenceData
+    recurring_meeting_id: String
+}
+
+type GoogleCalendarDateTime {
+    dateTime: String!
+    timeZone: String!
+}
+
+type GoogleCalendarAttendee {
+    email: String!
+    displayName: String
+    responseStatus: String!
+}
+
+type GoogleCalendarConferenceData {
+    entryPoints: [GoogleCalendarEntryPoint!]!
+}
+
+type GoogleCalendarEntryPoint {
+    entryPointType: String!
+    uri: String!
+}
+
+type GoogleCalendarLinkResponse {
+    success: Boolean!
+    message: String
+}
+
+type GoogleCalendarRevokeResponse {
+    success: Boolean!
+    message: String!
+}
+
+type GoogleCalendarWebhookRefreshResponse {
+    success: Boolean!
+    message: String!
+    webhook_url: String
+}
+
+input SyncSingleEventInput {
+    "The local event ID to sync from Google Calendar"
+    eventId: String!
+}
+
+type SyncSingleEventResponse {
+    "Whether the operation was successful"
+    success: Boolean!
+
+    "Success or error message"
+    message: String!
+
+    "The updated event data"
+    event: Event
+}
+
+input FetchGoogleCalendarEventsInput {
+    "Date range start (YYYY-MM-DD format). Defaults to start of current week."
+    fromDate: Date
+
+    "Date range end (YYYY-MM-DD format). Defaults to end of current week."
+    toDate: Date
+
+    "Whether to store the fetched events in the database as Event records. Defaults to false."
+    storeEvents: Boolean = false
+}
+
+type FetchUserCalendarEventsResponse {
+    "Whether the operation was successful"
+    success: Boolean!
+
+    "Success or error message"
+    message: String!
+}
+
+input FetchUserCalendarEventsInput {
+    "The pulse ID where calendar events should be saved. If not provided, events will be saved to all user's personal pulses within the specified organization"
+    pulseId: ID
+
+    "The organization ID for authorization. Required for all operations"
+    organizationId: ID!
+}
+
+input FetchUserGoogleCalendarSourcedEventsInput {
+    "The pulse ID where sourced calendar events should be saved. If not provided, events will be saved to all user's personal pulses within the specified organization"
+    pulseId: ID
+
+    "The organization ID for authorization. Required for all operations"
+    organizationId: ID!
+}
+
+type FetchUserGoogleCalendarSourcedEventsResponse {
+    "Whether the operation was successful"
+    success: Boolean!
+
+    "Success or error message"
+    message: String!
+}

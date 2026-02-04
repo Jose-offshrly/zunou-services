@@ -1,0 +1,30 @@
+enum CompanionStatus @enum(class: "App\\Enums\\CompanionStatus") {
+    JOINED
+}
+
+"Input for companion webhook."
+input CompanionWebhookInput {
+    meetingSessionId: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:meeting_sessions,id"
+        ])
+    companionStatus: CompanionStatus
+}
+
+type CompanionDetails {
+    meeting_id: String
+    bot_id: String
+    status: String
+    original_status: String
+    meeting_status: String
+    started_at: String
+    ended_at: String
+    joined_at: String
+    last_heartbeat: String
+    is_active: Boolean
+    heartbeat_age_minutes: String
+    transcription_generated: String
+}

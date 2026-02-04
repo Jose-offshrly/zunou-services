@@ -1,0 +1,89 @@
+enum ThreadType {
+    user
+    admin
+    guest
+}
+
+"Input for creating threads."
+input CreateThreadInput {
+    "The name of the thread."
+    name: String! @rules(apply: ["required"])
+
+    "The organization that this thread belongs to."
+    organizationId: String!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required", "exists:organizations,id"])
+
+    "The pulse that this thread belongs to. Optional for now."
+    pulseId: String
+        @rename(attribute: "pulse_id")
+        @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+
+    "Type of thread - 'admin', 'user', or 'guest', defaults to 'user'"
+    type: String! @rules(apply: ["in:admin,user,guest"])
+}
+
+"Input for updating threads."
+input UpdateThreadInput {
+    "The ID of the thread to update"
+    id: String! @rules(apply: ["min:36", "max:36", "required"])
+
+    "The name of the thread."
+    name: String
+        @rules(apply: ["min:5", "max:250", "unique:threads,name", "required"])
+}
+
+"Input for deleting a thread."
+input DeleteThreadInput {
+    "The ID of the thread to delete"
+    id: String! @rules(apply: ["min: 36", "max: 36", "required"])
+}
+
+"Input for generating a thread title"
+input GenerateThreadTitleInput {
+    threadId: UUID!
+}
+
+"An thread started by a user."
+type Thread {
+    "Timestamp when the thread was created."
+    createdAt: DateTime!
+
+    "Unique primary key."
+    id: UUID!
+
+    "Unique thread name."
+    name: String!
+
+    "ID of the organization that this thread belongs to."
+    organizationId: UUID!
+
+    "Type of thread"
+    type: String!
+
+    "Timestamp when the thread was last updated."
+    updatedAt: DateTime!
+
+    "ID of the pulse that this thread belongs to."
+    pulseId: UUID
+
+    "ID of the user that this thread belongs to."
+    userId: UUID!
+
+    "Set this to the active thread"
+    isActive: Boolean
+
+    "The user that this thread belongs to."
+    user: User @belongsTo
+
+    "Saved messages in this thread"
+    savedMessages: [SavedMessage!] @hasMany(scopes: ["forCurrentUser"])
+
+    "The associated pulse to the thread"
+    pulse: Pulse
+}
+
+"A thread title response."
+type ThreadTitleResponse {
+    title: String!
+}

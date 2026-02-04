@@ -1,0 +1,24 @@
+enum FeedType @enum(class: "App\\Enums\\FeedType") {
+    TASK_CREATED
+    TASK_ASSIGNED
+    DIRECTMESSAGE
+    COLLAB_STARTED
+    ORGGROUP_CREATED
+    PULSEMEMBER_ADDED
+    TEAMMESAGE
+}
+
+"Activity for an organization."
+type Activity {
+    id: ID!
+    description: String!
+    causer: User! @with(relation: "causer")
+    subjectType: String!
+    organizationId: ID!
+    pulseId: ID
+    receiverId: ID
+    properties: JSON!
+    feedType: FeedType
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}

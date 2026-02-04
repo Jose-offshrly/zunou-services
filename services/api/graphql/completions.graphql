@@ -1,0 +1,42 @@
+input CreateCompletionInput {
+    message: String
+
+    organizationId: String!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:organizations,id"
+        ])
+
+    threadId: String!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:threads,id"
+        ])
+
+    userId: String
+        @rules(apply: [
+            "min:36" 
+            "max:36"
+            "exists:users,id"
+        ])
+    metadata: String
+
+    topicId: ID @rules(apply: ["nullable", "exists:topics,id", "min:36", "max:36"])
+}
+
+input CreateInsightsCompletionInput {
+    message: String!
+    insightId: ID!
+
+    organizationId: String!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:organizations,id"
+        ])
+}

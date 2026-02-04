@@ -1,0 +1,47 @@
+"Input for agreeing to terms during onboarding."
+input OnboardingAgreeToTermsInput {
+    "The organization that is agreeing to terms."
+    organizationId: UUID!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required"])
+}
+
+"Input for confirming the presence of data sources during onboarding."
+input OnboardingConfirmDataSourcesInput {
+    "The organization that is confirming data sources."
+    organizationId: UUID!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required"])
+}
+
+"Input for marking onboarding as complete."
+input OnboardingCompleteInput {
+    "The organization that is completing onboarding."
+    organizationId: UUID!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required"])
+}
+
+"Input for confirming Slack installation during onboarding."
+input OnboardingConfirmSlackInput {
+    code: String! @rules(apply: ["max:250", "required"])
+
+    "The organization that is confirming Slack installation."
+    organizationId: UUID!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required"])
+}
+
+"Input for generating a Slack installation URI."
+input OnboardingGenerateSlackInstallUriInput {
+    "The organization that is installing Slack."
+    organizationId: String! @rules(apply: ["min:36", "max:36", "required"])
+
+    redirectUri: String! @rules(apply: ["min:10", "max:250", "required"])
+}
+
+"A URI for installing Slack."
+type SlackInstallUri {
+    "The URI to use to install the Slack app."
+    uri: String!
+}

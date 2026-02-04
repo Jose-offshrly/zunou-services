@@ -1,0 +1,843 @@
+name: global (perform staging release)
+
+# Cancel in-progress jobs.
+concurrency:
+  group: global-perform-staging-release-${{ github.ref }}
+  cancel-in-progress: true
+
+# See https://github.com/semantic-release/semantic-release/issues/2464#issuecomment-1329732447
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - .github/workflows/global-perform-staging-release.yml
+      - lib/zunou-graphql/**
+      - lib/zunou-queries/**
+      - lib/zunou-react/**
+      - services/admin/**
+      - services/api/**
+      - services/ai-proxy/**
+      - services/dashboard/**
+      - services/error-assistant/**
+      - services/kestra/**
+      - services/meet-bot/meeting-recorder/google-meets/**
+      - services/pulse/**
+      - services/meet-bot/scheduler-service/**
+      - services/slack/**
+      - services/unstructured/**
+      - services/uploader/**
+
+env:
+  AWS_ACCOUNT_ID: 322607082550
+  AWS_REGION: ap-northeast-1
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+  GIT_EMAIL: devops@zunou.ai
+  GIT_USER: Zunou Ops
+  FORCE_COLOR: 1
+
+jobs:
+  check-any:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.any-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Get changed files
+        id: any-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            .github/workflows/global-perform-staging-release.yml
+            lib/zunou-graphql/**
+            lib/zunou-queries/**
+            lib/zunou-react/**
+            services/admin/**
+            services/api/**
+            services/ai-proxy/**
+            services/dashboard/**
+            services/error-assistant/**
+            services/kestra/**
+            services/meet-bot/meeting-recorder/google-meets/**
+            services/pulse/**
+            services/meet-bot/scheduler-service/**
+            services/slack/**
+            services/unstructured/**
+            services/uploader/**
+      - name: List all changed files
+        run: |
+          for file in ${{ steps.any-changes.outputs.all_changed_files }}; do
+            echo "$file was changed"
+          done
+
+  version:
+    runs-on: ubuntu-latest
+    needs: check-any
+    if: needs.check-any.outputs.changed == 'true'
+    outputs:
+      semver: ${{ steps.setsemver.outputs.semver }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install packages
+        run: yarn install
+      - name: Determine the semantic version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: touch .VERSION && yarn semantic-release
+      - name: Set semantic version variable
+        run: echo SEM_VER=`cat .VERSION` >> $GITHUB_ENV
+      - id: setsemver
+        name: Set output
+        run: echo "semver=${SEM_VER}" >> $GITHUB_OUTPUT
+
+  #---------------------------------------------------
+  #
+  # admin
+  #
+  #---------------------------------------------------
+  check-admin:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.semver != '' }}
+    outputs:
+      changed: ${{ steps.admin-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Get changed files
+        id: admin-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            lib/zunou-graphql/**
+            lib/zunou-queries/**
+            lib/zunou-react/**
+            services/admin/**
+
+  tag-and-release-admin:
+    runs-on: ubuntu-latest
+    needs: [version, check-admin]
+    if: ${{ needs.check-admin.outputs.changed == 'true' }}
+    defaults:
+      run:
+        working-directory: services/admin
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-admin changed
+        run: echo '${{ needs.check-admin.outputs.changed }}'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install packages
+        run: yarn install
+      - name: build
+        run: make build
+
+  #---------------------------------------------------
+  #
+  # api
+  #
+  #---------------------------------------------------
+  check-api:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.semver != '' }}
+    outputs:
+      changed: ${{ steps.api-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Get changed files
+        id: api-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            services/api/**
+
+  tag-and-release-api:
+    runs-on: ubuntu-latest
+    needs: [version, check-api]
+    if: ${{ needs.check-api.outputs.changed == 'true' }}
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-api changed
+        run: echo '${{ needs.check-api.outputs.changed }}'
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.3
+          tools: composer:v2
+          coverage: none
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Require Vapor CLI
+        run: composer global require laravel/vapor-cli
+      - name: Install Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+      - name: Generate GraphQL Schema
+        run: php artisan lighthouse:print-schema --write
+        env:
+          OPENAI_API_KEY: 'dummy-key-for-schema-generation'
+      - name: Create storage directory for docs
+        run: mkdir -p storage/app/docs
+      - name: Generate API Documentation
+        run: npx spectaql spectaql.config.yml
+        env:
+          CORE_GRAPHQL_URL: https://api.staging.zunou.ai/graphql
+      - name: Copy docs to Laravel storage path
+        run: |
+          # Ensure the docs were generated
+          if [ -f public/docs/index.html ]; then
+            echo "✅ Documentation generated successfully"
+            ls -la public/docs/
+            echo "Files ready for deployment"
+          else
+            echo "❌ Warning: spectaql docs not found in expected location"
+            echo "Searching for generated docs..."
+            find . -name "index.html" -path "*/docs/*" -ls
+            exit 1
+          fi
+      - name: Deploy
+        run: make deploy-staging
+        env:
+          VAPOR_API_TOKEN: ${{ secrets.VAPOR_API_TOKEN }}
+
+  #---------------------------------------------------
+  #
+  # dashboard
+  #
+  #---------------------------------------------------
+  check-dashboard:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.semver != '' }}
+    outputs:
+      changed: ${{ steps.dashboard-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Get changed files
+        id: dashboard-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            lib/zunou-graphql/**
+            lib/zunou-queries/**
+            lib/zunou-react/**
+            services/dashboard/**
+
+  tag-and-release-dashboard:
+    runs-on: ubuntu-latest
+    needs: [version, check-dashboard]
+    if: ${{ needs.check-dashboard.outputs.changed == 'true' }}
+    defaults:
+      run:
+        working-directory: services/dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-dashboard changed
+        run: echo '${{ needs.check-dashboard.outputs.changed }}'
+      - name: Update dashboard version
+        run: |
+          # Create or update version.json file with semver
+          echo '{"version": "${{ needs.version.outputs.semver }}"}' > src/version.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install packages
+        run: yarn install
+      - name: Build
+        run: NODE_OPTIONS="--max-old-space-size=4096" make build
+      - name: Configure git
+        run: |
+          git config --global user.email "${GIT_EMAIL}"
+          git config --global user.name "${GIT_USER}"
+      - name: Push changes to Github
+        run: |
+          git stash save || echo "Nothing to stash"
+          git pull --rebase origin ${GITHUB_REF}
+
+          if git stash list | grep -q .; then
+            git stash apply
+          else
+            echo "No stash to apply"
+          fi
+
+          git add src/version.json
+          git commit -m "build(dashboard): bump 'dashboard' version to ${{ needs.version.outputs.semver }}"
+          git push -u origin ${GITHUB_REF}
+
+  #---------------------------------------------------
+  #
+  # kestra
+  #
+  #---------------------------------------------------
+  check-kestra:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.semver != '' }}
+    outputs:
+      changed: ${{ steps.kestra-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Get changed files
+        id: kestra-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            services/kestra/**
+
+  tag-and-release-kestra:
+    runs-on: ubuntu-latest
+    needs: [version, check-kestra]
+    if: ${{ needs.check-kestra.outputs.changed == 'true' }}
+    defaults:
+      run:
+        working-directory: services/kestra
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-kestra changed
+        run: echo '${{ needs.check-kestra.outputs.changed }}'
+      - name: Update kestra application with the new tag.
+        run: |
+          sed -i "s|kestra_staging_version = .*|kestra_staging_version = \"${{ needs.version.outputs.semver }}\"|" ../../infrastructure/environment/modules/ecs/variables.tf
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Set env
+        run: echo "IMAGE_NAME=$(echo ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/kestra:${{ needs.version.outputs.semver }})" >> $GITHUB_ENV
+      - name: Build the Docker image
+        run: |
+          ENVIRONMENT=production docker build -t ${IMAGE_NAME} .
+      - name: Push the Docker image to ECR
+        run: |
+          docker push ${IMAGE_NAME}
+      - name: Configure git
+        run: |
+          git config --global user.email "${GIT_EMAIL}"
+          git config --global user.name "${GIT_USER}"
+      - name: Push changes to Github
+        run: |
+          git stash save
+          git pull --rebase origin ${GITHUB_REF}
+          git stash apply
+          git add ../../infrastructure/environment/modules/ecs/variables.tf
+          git commit -m "build(kestra): bump 'kestra' version to ${{ needs.version.outputs.semver }}"
+          git push -u origin ${GITHUB_REF}
+
+  #---------------------------------------------------
+  #
+  # meet-bot
+  #
+  #---------------------------------------------------
+  check-meet-bot:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.semver != '' }}
+    outputs:
+      changed: ${{ steps.meet-bot-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Get changed files
+        id: meet-bot-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            services/meet-bot/meeting-recorder/google-meets/**
+
+  tag-and-release-meet-bot:
+    runs-on: ubuntu-latest
+    needs: [version, check-meet-bot]
+    if: ${{ needs.check-meet-bot.outputs.changed == 'true' }}
+    defaults:
+      run:
+        working-directory: services/meet-bot/meeting-recorder/google-meets
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set environment variables
+        run: |
+          echo "ECR_REPO=322607082550.dkr.ecr.ap-northeast-1.amazonaws.com/meet-bot-api" >> $GITHUB_ENV
+          echo "CLUSTER=primary-staging" >> $GITHUB_ENV
+          echo "SERVICE=meet-bot-staging" >> $GITHUB_ENV
+
+      - name: Build Docker image
+        run: |
+          docker build -t $ECR_REPO:${{ needs.version.outputs.semver }} .
+
+      - name: Push Docker image
+        run: |
+          docker tag $ECR_REPO:${{ needs.version.outputs.semver }} $ECR_REPO:staging-latest
+          docker push $ECR_REPO:staging-latest
+
+      - name: Trigger ECS deployment
+        run: |
+          aws ecs update-service \
+            --cluster $CLUSTER \
+            --service $SERVICE \
+            --force-new-deployment
+
+      - name: Confirm deployment
+        run: |
+          echo "✅ meet-bot ${ECR_REPO}:${{ needs.version.outputs.semver }} deployed to ECS cluster $CLUSTER service $SERVICE"
+
+      - name: Configure git
+        run: |
+          git config --global user.email "${GIT_EMAIL}"
+          git config --global user.name "${GIT_USER}"
+
+  #---------------------------------------------------
+  #
+  # pulse
+  #
+  #---------------------------------------------------
+  check-pulse:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.semver != '' }}
+    outputs:
+      changed: ${{ steps.pulse-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Get changed files
+        id: pulse-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            lib/zunou-graphql/**
+            lib/zunou-queries/**
+            lib/zunou-react/**
+            services/pulse/**
+
+  tag-and-release-pulse:
+    runs-on: ubuntu-latest
+    needs: [version, check-pulse]
+    if: ${{ needs.check-pulse.outputs.changed == 'true' }}
+    defaults:
+      run:
+        working-directory: services/pulse
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-pulse changed
+        run: echo '${{ needs.check-pulse.outputs.changed }}'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install packages
+        run: yarn install
+      - name: build
+        run: make build
+
+  #---------------------------------------------------
+  #
+  # scheduler-service (for meetbot)
+  #
+  #---------------------------------------------------
+  check-scheduler-service:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.semver != '' }}
+    outputs:
+      changed: ${{ steps.scheduler-service-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Get changed files
+        id: scheduler-service-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            services/meet-bot/scheduler-service/**
+
+  tag-and-release-scheduler-service:
+    runs-on: ubuntu-latest
+    needs: [version, check-scheduler-service]
+    if: ${{ needs.check-scheduler-service.outputs.changed == 'true' }}
+    defaults:
+      run:
+        working-directory: services/meet-bot/scheduler-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set environment variables
+        run: |
+          echo "ECR_REPO=322607082550.dkr.ecr.ap-northeast-1.amazonaws.com/scheduler-service" >> $GITHUB_ENV
+          echo "CLUSTER=primary-staging" >> $GITHUB_ENV
+          echo "SERVICE=scheduler-service-staging" >> $GITHUB_ENV
+
+      - name: Build Docker image
+        run: |
+          docker build -t $ECR_REPO:${{ needs.version.outputs.semver }} .
+
+      - name: Push Docker image
+        run: |
+          docker tag $ECR_REPO:${{ needs.version.outputs.semver }} $ECR_REPO:staging-latest
+          docker push $ECR_REPO:staging-latest
+
+      - name: Trigger ECS deployment
+        run: |
+          aws ecs update-service \
+            --cluster $CLUSTER \
+            --service $SERVICE \
+            --force-new-deployment
+
+      - name: Confirm deployment
+        run: |
+          echo "✅ scheduler-service ${ECR_REPO}:${{ needs.version.outputs.semver }} deployed to ECS cluster $CLUSTER service $SERVICE"
+
+      - name: Configure git
+        run: |
+          git config --global user.email "${GIT_EMAIL}"
+          git config --global user.name "${GIT_USER}"
+
+  #---------------------------------------------------
+  #
+  # slack
+  #
+  #---------------------------------------------------
+  check-slack:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.semver != '' }}
+    outputs:
+      changed: ${{ steps.slack-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Get changed files
+        id: slack-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            services/slack/**
+
+  tag-and-release-slack:
+    runs-on: ubuntu-latest
+    needs: [version, check-slack]
+    if: ${{ needs.check-slack.outputs.changed == 'true' }}
+    defaults:
+      run:
+        working-directory: services/slack
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-slack changed
+        run: echo '${{ needs.check-slack.outputs.changed }}'
+      - name: Update Slack application with the new tag.
+        run: |
+          sed -i "s|stagingVersion = .*|stagingVersion = '${{ needs.version.outputs.semver }}'|" src/services/Constants.ts
+          sed -i "s|slack_staging_version = .*|slack_staging_version = \"${{ needs.version.outputs.semver }}\"|" ../../infrastructure/environment/modules/ecs/variables.tf
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Set env
+        run: echo "IMAGE_NAME=$(echo ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/slack:${{ needs.version.outputs.semver }})" >> $GITHUB_ENV
+      - name: Build the Docker image
+        run: |
+          make docker-prepare
+          ENVIRONMENT=staging docker build -t ${IMAGE_NAME} .
+      - name: Push the Docker image to ECR
+        run: |
+          docker push ${IMAGE_NAME}
+      - name: Push the new version to Github
+        run: |
+          git config --global user.email "${GIT_EMAIL}"
+          git config --global user.name "${GIT_USER}"
+          git stash save
+          git pull --rebase origin ${GITHUB_REF}
+          git stash apply
+          git add src/services/Constants.ts
+          git add ../../infrastructure/environment/modules/ecs/variables.tf
+          git commit -m "build(slack): bump 'slack' version to ${{ needs.version.outputs.semver }}"
+          git push -u origin ${GITHUB_REF}
+
+  #---------------------------------------------------
+  #
+  # unstructured
+  #
+  #---------------------------------------------------
+  check-unstructured:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.semver != '' }}
+    outputs:
+      changed: ${{ steps.unstructured-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Get changed files
+        id: unstructured-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            services/unstructured/**
+
+  tag-and-release-unstructured:
+    runs-on: ubuntu-latest
+    needs: [version, check-unstructured]
+    if: ${{ needs.check-unstructured.outputs.changed == 'true' }}
+    defaults:
+      run:
+        working-directory: services/unstructured
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-unstructured changed
+        run: echo '${{ needs.check-unstructured.outputs.changed }}'
+      - name: Update Unstructured application with the new tag.
+        run: |
+          sed -i "s|staging_version = .*|staging_version = '${{ needs.version.outputs.semver }}'|" flask_processor.py
+          sed -i "s|unstructured_staging_version = .*|unstructured_staging_version = \"${{ needs.version.outputs.semver }}\"|" ../../infrastructure/environment/modules/ecs/variables.tf
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Set env
+        run: echo "IMAGE_NAME=$(echo ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/unstructured:${{ needs.version.outputs.semver }})" >> $GITHUB_ENV
+      - name: Build the Docker image
+        run: |
+          ENVIRONMENT=production docker build -t ${IMAGE_NAME} .
+      - name: Push the Docker image to ECR
+        run: |
+          docker push ${IMAGE_NAME}
+      - name: Configure git
+        run: |
+          git config --global user.email "${GIT_EMAIL}"
+          git config --global user.name "${GIT_USER}"
+      - name: Push changes to Github
+        run: |
+          git stash save
+          git pull --rebase origin ${GITHUB_REF}
+          git stash apply
+          git add flask_processor.py
+          git add ../../infrastructure/environment/modules/ecs/variables.tf
+          git commit -m "build(unstructured): bump 'unstructured' version to ${{ needs.version.outputs.semver }}"
+          git push -u origin ${GITHUB_REF}
+
+  #---------------------------------------------------
+  #
+  # uploader
+  #
+  #---------------------------------------------------
+  check-uploader:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.semver != '' }}
+    outputs:
+      changed: ${{ steps.uploader-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Get changed files
+        id: uploader-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            services/uploader/**
+
+  tag-and-release-uploader:
+    runs-on: ubuntu-latest
+    needs: [version, check-uploader]
+    if: ${{ needs.check-uploader.outputs.changed == 'true' }}
+    defaults:
+      run:
+        working-directory: services/uploader
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-uploader changed
+        run: echo '${{ needs.check-uploader.outputs.changed }}'
+      - name: Update uploader application with the new tag.
+        run: |
+          sed -i "s|stagingVersion = .*|stagingVersion = '${{ needs.version.outputs.semver }}'|" src/app.ts
+          sed -i "s|uploader_staging_version = .*|uploader_staging_version = \"${{ needs.version.outputs.semver }}\"|" ../../infrastructure/environment/modules/ecs/variables.tf
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Set env
+        run: echo "IMAGE_NAME=$(echo ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/uploader:${{ needs.version.outputs.semver }})" >> $GITHUB_ENV
+      - name: Build the Docker image
+        run: |
+          make docker-prepare
+          ENVIRONMENT=production docker build -t ${IMAGE_NAME} .
+      - name: Push the Docker image to ECR
+        run: |
+          docker push ${IMAGE_NAME}
+      - name: Configure git
+        run: |
+          git config --global user.email "${GIT_EMAIL}"
+          git config --global user.name "${GIT_USER}"
+      - name: Push changes to Github
+        run: |
+          git stash save
+          git pull --rebase origin ${GITHUB_REF}
+          git stash apply
+          git add src/app.ts
+          git add ../../infrastructure/environment/modules/ecs/variables.tf
+          git commit -m "build(uploader): bump 'uploader' version to ${{ needs.version.outputs.semver }}"
+          git push -u origin ${GITHUB_REF}
+
+  #---------------------------------------------------
+  #
+  # ai-proxy (Lambda)
+  #
+  #---------------------------------------------------
+  check-ai-proxy:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.semver != '' }}
+    outputs:
+      changed: ${{ steps.ai-proxy-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Get changed files
+        id: ai-proxy-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            services/ai-proxy/**
+
+  deploy-ai-proxy-staging:
+    runs-on: ubuntu-latest
+    needs: [version, check-ai-proxy]
+    if: ${{ needs.check-ai-proxy.outputs.changed == 'true' }}
+    defaults:
+      run:
+        working-directory: services/ai-proxy
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Deploy Lambda
+        run: make deploy-stg
+
+  #---------------------------------------------------
+  #
+  # error-assistant (Lambda)
+  #
+  #---------------------------------------------------
+  check-error-assistant:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.semver != '' }}
+    outputs:
+      changed: ${{ steps.error-assistant-changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Get changed files
+        id: error-assistant-changes
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            services/error-assistant/**
+
+  deploy-error-assistant-staging:
+    runs-on: ubuntu-latest
+    needs: [version, check-error-assistant]
+    if: ${{ needs.check-error-assistant.outputs.changed == 'true' }}
+    defaults:
+      run:
+        working-directory: services/error-assistant
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Deploy Lambda
+        run: make deploy-stg

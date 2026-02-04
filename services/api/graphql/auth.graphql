@@ -1,0 +1,11 @@
+"Input for registering user."
+input UserSignUpInput {
+    "The name of the user."
+    name: String! @rules(apply: ["required"])
+
+    "The email of the user"
+    email: String! @rules(apply: ["email", "required"])
+
+    "The password"
+    password: String! @rules(apply: ["min:8", "max:50", "required"])
+}

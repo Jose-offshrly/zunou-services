@@ -1,0 +1,96 @@
+"Input for direct message thread pagination."
+input DirectMessageThreadPaginationInput {
+    organizationId: ID! @rules(apply: ["required", "exists:organizations,id"])
+    receiverId: ID! @rules(apply: ["required", "exists:users,id"])
+    page: Int = 1
+}
+
+"Paginated result of direct message thread"
+type DirectMessageThreadPaginator {
+    threadId: ID!
+    data: [DirectMessage!]!
+    paginatorInfo: PaginatorInfo!
+}
+
+type DirectMessageThread {
+    id: ID!
+    organizationId: ID!
+    participants: [ID!]!
+    otherParticipant: User!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    directMessages: [DirectMessage] @hasMany
+    unreadCount: Int!
+        @field(resolver: "App\\GraphQL\\Queries\\DirectMessageUnreadCountQuery")
+    isPinned: Boolean!
+        @field(resolver: "App\\GraphQL\\Queries\\DirectMessageThreadIsPinnedQuery")
+}
+
+type DirectMessage {
+    id: ID!
+    directMessageThreadId: ID!
+    sender: User!
+    content: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    isEdited: Boolean!
+    deletedAt: DateTime
+    isRead: Boolean!
+        @field(resolver: "App\\GraphQL\\Queries\\DirectMessageReadQuery")
+    files: [File!]
+    isPinned: Boolean!
+    repliedToMessageId: ID
+    repliedToMessage: DirectMessage @belongsTo
+    groupedReactions: [DirectMessageGroupedReaction!]!
+        @field(resolver: "App\\GraphQL\\Queries\\DirectMessageGroupedReactionsQuery")
+}
+
+input CreateDirectMessageInput {
+    directMessageThreadId: ID!
+        @rules(apply: ["min:36", "max:36", "required", "exists:direct_message_threads,id"])
+    content: String! @rules(apply: ["required", "max:5000"])
+    organizationId: ID! @rules(apply: ["required", "exists:organizations,id"])
+    files: [DirectMessageFileInput!]
+    repliedToMessageId: ID @rules(apply: ["nullable", "exists:direct_messages,id"])
+}
+
+input UpdateDirectMessageInput {
+    directMessageId: ID!
+        @rules(apply: ["required", "exists:direct_messages,id"])
+    content: String! @rules(apply: ["required", "max:5000"])
+    organizationId: ID! @rules(apply: ["required", "exists:organizations,id"])
+    files: [DirectMessageFileInput!]
+}
+
+input DirectMessageFileInput {
+    fileKey: String!
+    fileName: String!
+    type: String!
+}
+
+input MarkDirectMessageReadInput {
+    directMessageId: ID!
+        @rules(apply: ["required", "exists:direct_messages,id"])
+}
+
+type DirectMessageReaction {
+    id: ID!
+    directMessageId: ID!
+    userId: ID!
+    reaction: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    user: User @belongsTo
+}
+
+type DirectMessageGroupedReaction {
+    reaction: String!
+    count: Int!
+    users: [User!]!
+}
+
+input ToggleDirectMessageReactionInput {
+    directMessageId: ID!
+        @rules(apply: ["required", "exists:direct_messages,id"])
+    reaction: String! @rules(apply: ["required", "max:10"])
+}

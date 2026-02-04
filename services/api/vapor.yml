@@ -1,0 +1,62 @@
+id: 56796
+name: zunou-graphql-api
+environments:
+    production:
+        cache: zunou-api-cache-production
+        build:
+            - 'COMPOSER_MIRROR_PATH_REPOS=1 composer install --no-dev'
+            - 'php artisan event:cache'
+        deploy:
+            - 'php artisan migrate --force'
+            # - "php artisan queue:restart"
+        domain: api.zunou.ai
+        cli-memory: 512
+        cli-timeout: 120
+        database: zunou-graphql-api-production
+        memory: 1024
+        queues:
+            - high-production
+            - default-production
+            - mail-production
+        queue-timeout: 900
+        runtime: 'php-8.2:al2'
+        scheduler: sub-minute
+        storage: zunou-graphql-production
+        timeout: 10
+        warm: 5
+    staging:
+        cache: zunou-api-cache-staging
+        cors:
+            - 'https://dashboard.staging.zunou.ai'
+        allowed_methods:
+            - GET
+            - POST
+            - OPTIONS
+            - PATCH
+            - DELETE
+            - PUT
+        build:
+            - 'COMPOSER_MIRROR_PATH_REPOS=1 composer install --no-dev'
+            - 'rm -rf node_modules'
+            - 'php artisan event:cache'
+
+        deploy:
+            - 'php artisan migrate --force'
+            # - "php artisan queue:restart"
+        domain: api.staging.zunou.ai
+        cli-memory: 512
+        cli-timeout: 120
+        database: zunou-graphql-api-staging
+        memory: 1024
+        queues:
+            - high-staging
+            - default-staging
+            - mail-staging
+        queue-timeout: 900
+        runtime: 'php-8.2:al2'
+        scheduler: sub-minute
+        secrets:
+            - zunou-graphql-api-staging/stripe
+        storage: zunou-graphql-staging
+        timeout: 10
+        warm: 1

@@ -1,0 +1,33 @@
+type Background {
+    id: ID!
+    userId: ID!
+    organizationId: ID!
+    active: Boolean!
+    metadata: Metadata!
+    image_url: String!
+}
+
+input CreateBackgroundInput {
+    userId: ID!
+        @rules(apply: ["min: 36", "max: 36", "exists:users,id", "required"])
+    organizationId: ID!
+        @rules(
+            apply: ["min: 36", "max: 36", "exists:organizations,id", "required"]
+        )
+    active: Boolean!
+    "The S3 key that the data file was uploaded to."
+    fileKey: String
+        @rename(attribute: "file_key")
+        @rules(apply: ["min:20", "max:250", "required"])
+
+    "The file name of the data source"
+    fileName: String
+        @rename(attribute: "file_name")
+        @rules(apply: ["min:5", "max:250", "required"])
+}
+
+"Input for updating background"
+input UpdateBackgroundInput {
+    backgroundId: ID!
+    active: Boolean!
+}

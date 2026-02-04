@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@zunou-graphql/*": ["../../lib/zunou-graphql/*"],
+      "@zunou-queries/*": ["../../lib/zunou-queries/*"],
+      "@zunou-react/*": ["../../lib/zunou-react/*"],
+      "types": ["./src/types"],
+      "~/*": ["./src/*"]
+    }
+  },
+  "exclude": [],
+  "include": ["src"]
+}

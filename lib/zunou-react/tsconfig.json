@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@zunou-graphql/*": ["../zunou-graphql/*"],
+      "@zunou-queries/*": ["../zunou-queries/*"],
+      "@zunou-react/*": ["./*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../../services/dashboard/src/components/layouts/ThreeColumnLayout.tsx",
+    "../../services/dashboard/src/components/layouts/LeftSection.tsx",
+    "../../services/dashboard/src/components/domain/messageInputField/MessageMenu.tsx",
+    "../../services/dashboard/src/components/domain/dataSource/DataSourceSetup/meetingComponents/MeetingListItem.tsx"
+  ]
+}

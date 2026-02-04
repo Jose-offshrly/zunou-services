@@ -1,0 +1,44 @@
+# Define the type for MisalignmentAlert
+type MisalignmentAlert {
+    "Unique primary key."
+    id: ID!
+
+    "The organization related to the alert."
+    organization: Organization! @belongsTo
+
+    "The ID of the organization."
+    organizationId: UUID!
+
+    "The value that was violated."
+    violatedValue: String!
+
+    "A summary explanation for the violation (with privacy protection)."
+    summary: String!
+
+    "The severity of the violation."
+    severity: String!
+
+    "The date and time when the misalignment was detected."
+    detectedAt: DateTime!
+
+    "Indicates whether the alert has been acknowledged by the manager."
+    acknowledged: Boolean!
+
+    "Timestamp when the alert was acknowledged."
+    acknowledgedAt: DateTime
+
+    "Timestamp when the alert was created."
+    createdAt: DateTime!
+
+    "Timestamp when the alert was last updated."
+    updatedAt: DateTime!
+}
+
+"Input for acknowledging a misalignment alert."
+input AcknowledgeMisalignmentAlertInput {
+    "The ID of the misalignment alert to acknowledge."
+    id: String! @rules(apply: ["min:36", "max:36", "required", "exists:misalignment_alerts,id"])
+
+    "The organization that this misalignment alert belongs to."
+    organizationId: String! @rules(apply: ["min:36", "max:36", "required", "exists:organizations,id"])
+}

@@ -1,0 +1,30 @@
+type ThreadMessage {
+    id: ID!
+    content: String!
+    organizationId: ID!
+    role: String!
+    threadId: ID!
+    userId: ID!
+    is_saved: Boolean
+}
+
+type SavedMessage {
+    id: ID!
+    messageId: ID!
+    userId: ID!
+    thread: Thread
+    data: ThreadMessage!
+    created_at: DateTime!
+    updated_at: DateTime!
+}
+
+"Input for saving messages."
+input SaveMessageInput {
+    "ID of the message to save."
+    messageId: ID!
+
+    "ID of the thread associated to the message."
+    threadId: ID!
+    pulseId: ID! @rename(attribute: "pulse_id")
+    organizationId: ID! @rename(attribute: "organization_id")
+}

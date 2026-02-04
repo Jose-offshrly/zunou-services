@@ -1,0 +1,123 @@
+"""
+MCP Authorization Flow response
+"""
+type MCPAuthorizationFlow {
+    """
+    OAuth authorization URL to redirect user to
+    """
+    authUrl: String!
+
+    """
+    OAuth state parameter for security validation
+    """
+    state: String!
+
+    """
+    MCP server URL being authorized
+    """
+    mcpUrl: String!
+
+    """
+    Authorization server information discovered
+    """
+    authServerInfo: MCPAuthServerInfo
+}
+
+"""
+MCP Authorization Server Information
+"""
+type MCPAuthServerInfo {
+    """
+    Authorization endpoint URL
+    """
+    authorizationEndpoint: String!
+
+    """
+    Token endpoint URL
+    """
+    tokenEndpoint: String!
+
+    """
+    Client registration endpoint (if available)
+    """
+    registrationEndpoint: String
+
+    """
+    Client ID used for authorization
+    """
+    clientId: String!
+
+    """
+    Supported scopes
+    """
+    scopesSupported: [String!]
+
+    """
+    Supported response types
+    """
+    responseTypesSupported: [String!]
+
+    """
+    Supported grant types
+    """
+    grantTypesSupported: [String!]
+}
+
+"""
+MCP OAuth Callback Response
+"""
+type MCPCallbackResponse {
+    """
+    Success status of the callback
+    """
+    success: Boolean!
+
+    """
+    Response message
+    """
+    message: String!
+
+    """
+    Token data if successful
+    """
+    tokenData: MCPTokenData
+}
+
+"""
+MCP Token Data
+"""
+type MCPTokenData {
+    """
+    MCP server URL
+    """
+    mcpUrl: String!
+
+    """
+    OAuth access token
+    """
+    accessToken: String!
+
+    """
+    Token type (usually Bearer)
+    """
+    tokenType: String!
+
+    """
+    Token expiry time in seconds
+    """
+    expiresIn: Int
+
+    """
+    OAuth refresh token
+    """
+    refreshToken: String
+
+    """
+    OAuth scope
+    """
+    scope: String
+}
+
+enum MCPServer {
+    JIRA
+}

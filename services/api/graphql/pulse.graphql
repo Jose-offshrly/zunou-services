@@ -1,0 +1,153 @@
+"Input for creating custom pulses."
+input CreateCustomPulseInput {
+    "Name of the custom pulse."
+    name: String!
+    "Description of the custom pulse."
+    description: String
+    "ID of the organization to associate the new pulse with."
+    organizationId: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:organizations,id"
+        ])
+    "Features for the custom pulse"
+    features: [String!]
+}
+
+"Input for creating pulse from master pulse template."
+input CreatePulseInput {
+    "Tha name of the pulse"
+    name: String!
+    "ID of the master pulse to copy from."
+    masterPulseId: ID
+    "ID of the organization to associate the new pulse with."
+    organizationId: ID!
+    "The icon of the pulse."
+    icon: PulseType
+    "Description of the Pulse"
+    description: String
+    "Category of the Pulse"
+    category: PulseCategory!
+}
+
+input ProvisionPulseInput {
+    "The pulse details"
+    pulse: CreatePulseInput
+    "The strategies for the pulse"
+    strategies: [CreateStrategyInput]
+    "The members for the pulse"
+    members: [CreatePulseMemberInput]
+    "The dataSources for the pulse"
+    dataSources: [CreateDataSourceInput]
+}
+
+input UpdatePulseInput {
+    "Name of the pulse."
+    name: String!
+    "Description of the pulse."
+    description: String
+    "ID of the pulse to update."
+    pulseId: String!
+    "icon of the pulse."
+    icon: PulseType
+    "Status option of the pulse."
+    status_option: PulseStatusOption
+}
+
+enum PulseCategory @enum(class: "App\\Enums\\PulseCategory") {
+    ONETOONE
+    PERSONAL
+    TEAM
+}
+
+enum PulseStatusOption @enum(class: "App\\Enums\\PulseStatusOption") {
+    DEFAULT
+    CUSTOM
+}
+
+"Enum representing different types of pulses."
+enum PulseType {
+    hr
+    ops
+    admin
+    finance
+    generic
+    app
+    text
+    diversity
+    account
+    rocket
+    note
+    location
+    linked
+    book
+    sdk
+    mcp
+}
+
+type Pulse {
+    id: ID!
+    name: String! @cache(maxAge: 300, private: true)
+    icon: PulseType @cache(maxAge: 600, private: true)
+    type: PulseType! @cache(maxAge: 600, private: true)
+    notifications: [Notification!]
+    unread_notifications: String
+    notification_count: String @cache(maxAge: 60, private: true)
+    member_count: String @cache(maxAge: 120, private: true)
+    members: [PulseMember!]! @hasMany
+    saved_message_count: String @cache(maxAge: 60, private: true)
+    unread_team_messages: [TeamMessage!]!
+    features: [String!] @cache(maxAge: 600, private: true)
+    strategies: [Strategy!]
+    threads: [Thread!] @with(relation: "threads")
+    description: String @cache(maxAge: 300, private: true)
+    summary: String @cache(maxAge: 300, private: true)
+    created_at: DateTime
+    updated_at: DateTime
+    organization: Organization @belongsTo
+    latest_update: String
+    hasGuest: Boolean @cache(maxAge: 120, private: true)
+    team_thread: TeamThread @hasOne
+    category: PulseCategory @cache(maxAge: 600, private: true)
+    status_option: PulseStatusOption
+}
+
+type MasterPulse {
+    id: ID!
+    name: String!
+    type: PulseType!
+    status: String
+    features: [String!]
+    description: String
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+type WelcomeSentenceMetadata {
+    id: String!
+    name: String!
+}
+
+type WelcomeSentence {
+    text: String!
+    type: String!
+    metadata: WelcomeSentenceMetadata
+}
+
+type PulseWelcomeData {
+    pulseId: ID!
+    userId: ID!
+    lastVisited: DateTime
+    dataSources: [DataSource!]!
+    meetings: [Meeting!]!
+    tasks: [Task!]!
+    teamMessages: [TeamMessage!]!
+    sentences: [WelcomeSentence!]!
+}
+
+input UpdatePulseOrderInput {
+    pulseId: String! @rules(apply: ["min: 36", "max: 36", "required"])
+    order: String! @rules(apply: ["required"])
+}

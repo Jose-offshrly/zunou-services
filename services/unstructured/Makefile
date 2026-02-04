@@ -1,0 +1,72 @@
+build:
+
+clean:
+
+dev: 
+	docker build -f Dockerfile.dev -t unstructured-service-dev .
+	rm -Rf tmp/lib
+	docker run \
+		-e UNSTRUCTURED_API_KEY=${UNSTRUCTURED_API_KEY} \
+		-e UNSTRUCTURED_API_URL=${UNSTRUCTURED_API_URL} \
+		-e OPENAI_API_KEY=${OPENAI_API_KEY} \
+		-e PINECONE_API_KEY=${PINECONE_API_KEY} \
+		-e PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME} \
+		-e OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL} \
+		-e OPENAI_SUMMARY_MODEL=${OPENAI_SUMMARY_MODEL} \
+		-e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+		-e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+		-e POSTGRES_DB_DATABASE=${POSTGRES_DB_DATABASE} \
+    -e POSTGRES_DB_USERNAME=${POSTGRES_DB_USERNAME} \
+    -e POSTGRES_DB_PASSWORD=${POSTGRES_DB_PASSWORD} \
+    -e POSTGRES_DB_HOST=${POSTGRES_DB_HOST} \
+    -e POSTGRES_DB_PORT=${POSTGRES_DB_PORT} \
+		-e ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY} \
+		-e ENVIRONMENT=${ENVIRONMENT} \
+		--add-host host.docker.internal:host-gateway \
+		-p 8080:8080 \
+		-v "$(shell pwd):/app" \
+		unstructured-service-dev
+
+make docker-prepare:
+
+docker:
+	docker build -t unstructured-service .
+	rm -Rf tmp/lib
+
+docker-run: docker
+	docker run \
+		-e UNSTRUCTURED_API_KEY=${UNSTRUCTURED_API_KEY} \
+		-e UNSTRUCTURED_API_URL=${UNSTRUCTURED_API_URL} \
+		-e OPENAI_API_KEY=${OPENAI_API_KEY} \
+		-e PINECONE_API_KEY=${PINECONE_API_KEY} \
+		-e PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME} \
+		-e OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL} \
+		-e OPENAI_SUMMARY_MODEL=${OPENAI_SUMMARY_MODEL} \
+		-e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+		-e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+		-e POSTGRES_DB_DATABASE=${POSTGRES_DB_DATABASE} \
+    -e POSTGRES_DB_USERNAME=${POSTGRES_DB_USERNAME} \
+    -e POSTGRES_DB_PASSWORD=${POSTGRES_DB_PASSWORD} \
+    -e POSTGRES_DB_HOST=${POSTGRES_DB_HOST} \
+    -e POSTGRES_DB_PORT=${POSTGRES_DB_PORT} \
+		-e ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY} \
+		-e ENVIRONMENT=${ENVIRONMENT} \
+		-p 80:80 \
+		-it \
+		unstructured-service
+
+format: 
+
+lint:
+
+lint-fix:
+
+prettier:
+
+prettier-fix:
+
+preview:
+
+serve: 
+
+unused:

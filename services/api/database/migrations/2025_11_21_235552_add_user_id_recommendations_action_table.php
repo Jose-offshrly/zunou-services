@@ -1,0 +1,37 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('live_insight_recommendation_actions', function (Blueprint $table) {
+            $table->string('user_id')->nullable()->after('live_insight_recommendation_id');
+
+            $table->index(
+                ['live_insight_recommendation_id', 'user_id'],
+                'lir_actions_recommendation_user_index'
+            );
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('live_insight_recommendation_actions', function (Blueprint $table) {
+            // Drop index first
+            $table->dropIndex('lir_actions_recommendation_user_index');
+
+            // Drop column
+            $table->dropColumn('user_id');
+        });
+    }
+};

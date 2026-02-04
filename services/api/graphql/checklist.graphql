@@ -1,0 +1,110 @@
+"Input for creating a checklist."
+input CreateChecklistInput @validator(class: "App\\GraphQL\\Validators\\CreateChecklistInputValidator") {
+    name: String!
+    complete: Boolean = false
+    pulse_id: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:pulses,id"
+        ])
+    organization_id: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:organizations,id"
+        ])
+    event_id: ID
+        @rules(apply: [
+            "prohibits:event_instance_id"
+            "required_without:event_instance_id"
+            "min:36" 
+            "max:36"
+            "exists:events,id"
+        ])
+    event_instance_id: ID
+        @rules(apply: [
+            "prohibits:event_id"
+            "required_without:event_id"
+            "min:36" 
+            "max:36"
+            "exists:event_instances,id"
+        ])
+}
+
+"Input for updating a checklist."
+input UpdateChecklistInput @validator(class: "App\\GraphQL\\Validators\\UpdateChecklistInputValidator") {
+    id: ID! @whereKey
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:checklists,id"
+        ])
+    name: String
+    complete: Boolean
+}
+
+"Input for creating a smart checklist."
+input CreateSmartChecklistInput {
+    pulse_id: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:pulses,id"
+        ])
+    organization_id: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:organizations,id"
+        ])
+    event_id: ID
+        @rules(apply: [
+            "prohibits:event_instance_id"
+            "required_without:event_instance_id"
+            "min:36" 
+            "max:36"
+            "exists:events,id"
+        ])
+    event_instance_id: ID
+        @rules(apply: [
+            "prohibits:event_id"
+            "required_without:event_id"
+            "min:36" 
+            "max:36"
+            "exists:event_instances,id"
+        ])
+}
+
+"Input for updating the order of checklists."
+input ChecklistOrderInput {
+    id: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:checklists,id"
+        ])
+    position: Int!
+}
+
+"A Checklist resource"
+type Checklist {
+    id: ID!
+    name: String!
+    complete: Boolean!
+    pulse_id: ID!
+    organization_id: ID!
+    event_id: ID
+    event_instance_id: ID
+    event: Event
+    eventInstance: EventInstance
+    position: Int!
+    created_at: DateTime!
+    updated_at: DateTime!
+}

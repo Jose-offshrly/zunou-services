@@ -1,0 +1,50 @@
+enum MeetingStatus @enum(class: "App\\Enums\\MeetingStatus") {
+    pending
+    added
+    ignored
+}
+
+"Input for adding a meeting as datasource."
+input CreateMeetingDataSourceInput {
+    meetingId: ID!
+    integrationId: ID!
+    organizationId: ID!
+    pulseId: ID!
+}
+
+"Meeting resource"
+type Meeting {
+    id: ID!
+    meetingId: String!
+    pulseId: String!
+    userId: String!
+    title: String!
+    date: DateTime!
+    is_viewable: Boolean
+    timezone: String
+    organizer: String
+    source: String!
+    status: MeetingStatus!
+    dataSourceId: String
+    event: Event @belongsTo
+    meetingSession: MeetingSession @with(relation: "meetingSession")
+}
+
+"Input for adding a meeting as datasource."
+input CreateMeetingInput {
+    title: String!
+    pulseId: ID!
+    transcript: String
+    participants: String
+    metadata: MetadataInput
+    "Optional event ID to link transcript to a calendar event"
+    eventId: ID
+    "Optional event instance ID for recurring events"
+    eventInstanceId: ID
+}
+
+input ManuallyCreateRecurringMeetingInput {
+    meeting_session_id: ID!
+    next_meeting_session_id: ID!
+    delay_minutes: Int!
+}

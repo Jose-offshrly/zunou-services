@@ -1,0 +1,120 @@
+"A note object."
+type Note {
+    id: ID!
+    title: String!
+    content: String
+    pinned: Boolean!
+    labels: [Label!]
+    updatedAt: DateTime!
+    files: [File!]
+    position: String!
+    dataSourceId: String @rename(attribute: "data_source_id")
+    dataSource: DataSource @hasOne(relation: "data_source")
+    pulseId: ID @rename(attribute: "pulse_id")
+    pulse: Pulse @belongsTo
+}
+
+type PaginatedNotes {
+    data: [Note!]!
+    paginatorInfo: PaginatorInfo!
+}
+
+input PaginatedNotesInput {
+    organizationId: ID!
+        @rules(
+            apply: ["required", "min:36", "max:36", "exists:organizations,id"]
+        )
+        @rename(attribute: "organization_id")
+    pulseId: ID
+        @rules(apply: ["nullable", "min:36", "max:36", "exists:pulses,id"])
+        @rename(attribute: "pulse_id")
+    userId: ID
+        @rules(apply: ["nullable", "min:36", "max:36", "exists:users,id"])
+        @rename(attribute: "user_id")
+    "Filter by pinned status"
+    pinned: Boolean
+    "Filter by title. Accepts SQL LIKE wildcards `%` and `_`."
+    title: String
+    "Filter by content. Accepts SQL LIKE wildcards `%` and `_`."
+    content: String
+    "If true, show all labels including those from personal pulses, even if notes are outside a personal pulse."
+    viewAllLabels: Boolean
+    page: Int = 1
+    perPage: Int = 10
+}
+
+type SmartNoteResponse {
+    title: String!
+    note: String!
+    labels: [String!]!
+}
+
+input CreateNoteInput {
+    title: String! @rules(apply: ["required", "max:255"])
+    content: String
+    pinned: Boolean
+    pulseId: ID!
+        @rename(attribute: "pulse_id")
+        @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+    organizationId: ID!
+        @rename(attribute: "organization_id")
+        @rules(
+            apply: ["required", "min:36", "max:36", "exists:organizations,id"]
+        )
+    userId: ID!
+        @rename(attribute: "user_id")
+        @rules(apply: ["required", "min:36", "max:36", "exists:users,id"])
+    labels: [String!] # List of label names to attach
+    paths: [NoteAttachmentInput!] # File paths to attach to the note
+}
+
+input NoteAttachmentInput {
+    fileKey: String!
+    fileName: String!
+    type: String!
+}
+
+input CreateSmartNotesInput {
+    note: String!
+    pulseId: ID!
+        @rename(attribute: "pulse_id")
+        @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+    organizationId: ID!
+        @rename(attribute: "organization_id")
+        @rules(
+            apply: ["required", "min:36", "max:36", "exists:organizations,id"]
+        )
+    userId: ID!
+        @rename(attribute: "user_id")
+        @rules(apply: ["required", "min:36", "max:36", "exists:users,id"])
+}
+
+"Input for updating a note. Works like a PUT request - only provide fields you want to update."
+input UpdateNoteInput {
+    "The ID of the note to update"
+    id: ID!
+
+    "The title of the note"
+    title: String!
+
+    "The content of the note"
+    content: String
+
+    "List of label IDs to attach to the note"
+    labels: [ID!]
+
+    "Whether the note is pinned"
+    pinned: Boolean
+
+    pulseId: ID @rename(attribute: "pulse_id")
+    organizationId: ID @rename(attribute: "organization_id")
+
+    "File attachments to update for the note"
+    paths: [NoteAttachmentInput!] # File paths to attach to the note
+}
+
+"Input for updating the order of notes."
+input NoteOrderInput {
+    id: ID!
+    position: Int!
+}

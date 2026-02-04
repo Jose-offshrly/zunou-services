@@ -1,0 +1,40 @@
+{
+  "build_your_team": "チームを構築する",
+  "default_group_action_description": "リーダー、ワーカー、マネージャーのグループを作成",
+  "add_custom_group": "独自のグループを追加",
+  "start_from_scratch": "最初から始める",
+  "no_groups_found": "グループが見つかりません",
+  "only": "対象",
+  "admins_and_owners": "管理者とオーナーのみ",
+  "can_create_groups": "グループを作成できます",
+  "group_creation_prompt": "チームにグループの作成を依頼して始めましょう",
+
+  "new_group": "新しいグループ",
+  "create_group_success": "グループが正常に作成されました",
+  "create_default_group_success": "デフォルトのグループが正常に作成されました",
+  "create_group_error": "グループの作成に失敗しました",
+  "create_group_prompt": "グループを作成する",
+
+  "delete_group_success": "グループが正常に削除されました",
+  "delete_group_error": "グループの削除に失敗しました",
+  "delete_group": "グループを削除",
+  "delete_group_confirmation": "グループは削除され、メンバーは未割り当てになります。データは失われませんが、この操作は元に戻せません。",
+
+  "update_group_error": "グループの更新に失敗しました",
+  "update_group_success": "グループが正常に更新されました",
+
+  "search_members": "メンバーを検索",
+  "all_members_assigned": "全員に割り当て済みです！新しいチームメンバーが追加されたら、割り当てをお忘れなく。",
+
+  "job_description": "職務内容",
+  "no_job_description": "職務内容がありません",
+  "responsibilities": "担当業務",
+  "enter_responsibilities": "担当業務を入力してください（カンマ区切り）",
+  "no_responsibilities": "担当業務がありません",
+  "ai_generated": "AI生成",
+  "edit_person": "人物を編集",
+  "no_group_members_assigned": "このグループにはまだメンバーが割り当てられていません",
+
+  "override_content": "既存のコンテンツを上書きする",
+  "override_content_warning_msg": "現在のコンテンツはAI生成コンテンツに置き換えられます。保存する前に、生成されたコンテンツを確認および編集できます。"
+}

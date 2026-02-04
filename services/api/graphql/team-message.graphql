@@ -1,0 +1,108 @@
+"Input for creating team messages."
+input CreateTeamMessageInput {
+    teamThreadId: ID! @rules(apply: ["required", "exists:team_threads,id", "min:36", "max:36"])
+    topicId: ID @rules(apply: ["nullable", "exists:topics,id", "min:36", "max:36"])
+    userId: ID! @rules(apply: ["required", "exists:users,id", "min:36", "max:36"])
+    repliedToMessageId: ID @rules(apply: ["exists:team_messages,id", "min:36", "max:36"])
+    replyTeamThreadId: ID @rules(apply: ["exists:reply_team_threads,id", "min:36", "max:36"])
+    content: String! @rules(apply: ["required", "max:5000"])
+    metadata: TeamMessageMetadataInput @rules(apply: ["nullable"])
+    files: [TeamMessageFileInput!] 
+}
+
+"Input for updating team messages."
+input UpdateTeamMessageInput {
+    teamMessageId: ID! @rules(apply: ["required", "exists:team_messages,id"])
+    content: String! @rules(apply: ["required", "max:5000"])
+    files: [TeamMessageFileInput!] 
+}
+
+"Metadata for a team message"
+type TeamMessageMetadata {
+    excerpt: String
+    status: String
+    type: TeamMessageType
+}
+
+enum TeamMessageType @enum(class: "App\\Enums\\TeamMessageType") {
+    ALERT
+}
+
+input TeamMessageMetadataInput {
+    excerpt: String
+    status: String
+    type: TeamMessageType
+}
+
+input TeamMessageFileInput {
+    fileKey: String!
+    fileName: String!
+    type: String!
+}
+
+"Team message resource"
+type TeamMessage {
+    id: ID!
+    teamThreadId: ID!
+    topicId: ID
+    userId: ID!
+    replyTeamThreadId: ID
+    repliedToMessageId: ID
+    isParentReply: Boolean!
+    content: String
+    metadata: TeamMessageMetadata
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    isEdited: Boolean!
+    isDeleted: Boolean!
+    files: [File!]
+    deletedAt: DateTime
+    groupedReactions: [TeamMessageGroupedReaction!]!
+        @field(resolver: "App\\GraphQL\\Queries\\TeamMessageGroupedReactionsQuery")
+    user: User @belongsTo
+    topic: Topic @belongsTo
+    isRead: Boolean!
+        @field(resolver: "App\\GraphQL\\Queries\\TeamMessageReadQuery")
+    repliedToMessage: TeamMessage @belongsTo
+    isPinned: Boolean!
+}
+
+"Paginated result of team messages"
+type TeamMessagePaginator {
+    teamThreadId: ID!
+    data: [TeamMessage!]!
+    paginatorInfo: PaginatorInfo!
+    unreadCount: Int!
+        @field(resolver: "App\\GraphQL\\Queries\\TeamMessageUnreadCountQuery")
+}
+
+"Input for deleting team messages."
+input DeleteTeamMessageInput {
+    teamMessageId: ID! @rules(apply: ["required", "exists:team_messages,id"])
+}
+
+"Input for marking team messages as read"
+input MarkTeamMessageReadInput {
+    teamMessageId: ID! @rules(apply: ["required", "exists:team_messages,id"])
+}
+
+type TeamMessageReaction {
+    id: ID!
+    teamMessageId: ID!
+    userId: ID!
+    reaction: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    user: User @belongsTo
+}
+
+type TeamMessageGroupedReaction {
+    reaction: String!
+    count: Int!
+    users: [User!]!
+}
+
+input ToggleTeamMessageReactionInput {
+    teamMessageId: ID! @rules(apply: ["required", "exists:team_messages,id"])
+    reaction: String! @rules(apply: ["required", "max:10"])
+}

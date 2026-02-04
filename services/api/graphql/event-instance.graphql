@@ -1,0 +1,37 @@
+type EventInstance {
+    id: ID!
+    event_id: ID!
+    pulse_id: ID!
+    local_description: String
+    priority: String
+    created_at: DateTime
+    updated_at: DateTime
+    event: Event
+    pulse: Pulse
+}
+
+input CreateEventInstanceInput {
+    event_id: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:events,id"
+        ])
+    pulse_id: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:pulses,id"
+        ])
+    organization_id: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:organizations,id"
+        ])
+    local_description: String
+    priority: String
+}

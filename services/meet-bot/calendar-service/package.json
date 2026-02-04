@@ -1,0 +1,17 @@
+{
+  "name": "calendar-service",
+  "version": "1.0.0",
+  "description": "Google Calendar event watcher and webhook handler",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1692.0",
+    "axios": "^1.8.1",
+    "body-parser": "2.2.0",
+    "dotenv": "^16.4.7",
+    "express": "5.1.0",
+    "googleapis": "148.0.0"
+  }
+}

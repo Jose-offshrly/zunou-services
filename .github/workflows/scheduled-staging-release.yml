@@ -1,0 +1,57 @@
+name: auto (staging release)
+
+on:
+  schedule:
+    - cron: '0 0,3,6,8 * * 1-5' # 09:00, 12:00, 15:00, 17:00 JST — Monday through Friday
+  workflow_dispatch:
+
+jobs:
+  staging-release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.REPO_PERSONAL_ACCESS_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+
+      - name: Generate timestamp
+        run: echo "TIMESTAMP=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
+
+      - name: Generate release name
+        run: echo "RELEASE_NAME=Staging Candidate ${{ env.TIMESTAMP }}" >> $GITHUB_ENV
+
+      - name: Generate branch name
+        run: echo "BRANCH_NAME=staging-candidate-${{ env.TIMESTAMP }}" >> $GITHUB_ENV
+
+      - name: Reset working tree to main
+        run: |
+          git fetch origin main:main
+          git reset --hard origin/main
+
+      - name: Create PR if changes exist
+        id: create-pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.REPO_PERSONAL_ACCESS_TOKEN }}
+          assignees: github-actions
+          base: staging
+          branch: ${{ env.BRANCH_NAME }}
+          commit-message: 'build(global): staging release v${{ env.TIMESTAMP }}'
+          committer: GitHub <noreply@github.com>
+          delete-branch: false
+          draft: false
+          labels: please-review
+          title: '${{ env.RELEASE_NAME }}'
+          body: '${{ env.RELEASE_NAME }}'
+
+      - name: Merge PR if it was created
+        if: steps.create-pr.outputs.pull-request-number != ''
+        run: |
+          echo "Merging PR #${{ steps.create-pr.outputs.pull-request-number }}"
+          gh pr merge ${{ steps.create-pr.outputs.pull-request-number }} --merge --admin --delete-branch
+
+      - name: Skip merge (no changes to release)
+        if: steps.create-pr.outputs.pull-request-number == ''
+        run: echo "ℹ️ No pull request was created because main has no new commits compared to staging. Skipping merge."

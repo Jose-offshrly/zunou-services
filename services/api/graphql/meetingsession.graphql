@@ -1,0 +1,120 @@
+enum MeetingSessionStatus @enum(class: "App\\Enums\\MeetingSessionStatus") {
+    START
+    ACTIVE
+    INACTIVE
+    PAUSED
+    ENDED
+    STOPPED
+}
+
+enum MeetingSessionType @enum(class: "App\\Enums\\MeetingSessionType") {
+    MEETING
+    COLLAB
+}
+
+enum MeetingType @enum(class: "App\\Enums\\MeetingType") {
+    MEETING
+    BRAIN_DUMP
+}
+
+"Input for createing a meeting session"
+input CreateMeetingSessionInput {
+    meeting_url: String
+    passcode: String
+    type: MeetingSessionType!
+    meeting_type: MeetingType
+    pulseId: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+    organizationId: ID!
+        @rules(
+            apply: ["required", "min:36", "max:36", "exists:organizations,id"]
+        )
+    name: String
+    description: String
+    start_at: String
+    end_at: String
+    attendees: [ID]
+    external_attendees: [String]
+    invite_pulse: Boolean!
+    gcal_meeting_id: String
+    status: MeetingSessionStatus
+    event_id: ID @rules(apply: ["min:36", "max:36", "exists:events,id"])
+    event_instance_id: ID
+        @rules(apply: ["min:36", "max:36", "exists:event_instances,id"])
+    recurring_meeting_id: String
+    recurring_invite: Boolean
+}
+
+"Input for updating meeting session"
+input UpdateMeetingSessionInput {
+    meetingSessionId: ID!
+    status: MeetingSessionStatus!
+}
+
+"Input for updating meeting session invite_pulse"
+input UpdateMeetingSessionInvitePulseInput {
+    meetingSessionId: ID!
+    invite_pulse: Boolean!
+    recurring_invite: Boolean
+}
+
+"A MeetingSession resource"
+type MeetingSession {
+    id: ID!
+    meetingId: String!
+    meetingUrl: String!
+    type: MeetingSessionType!
+    meeting_type: MeetingType
+    status: MeetingSessionStatus!
+    pulseId: ID!
+    userId: ID
+    pulse: Pulse @with(relation: "pulse")
+    organizationId: ID!
+    name: String
+    description: String
+    start_at: String
+    end_at: String
+    attendees: [Attendee]!
+    external_attendees: [String]
+    invite_pulse: Boolean!
+    gcal_meeting_id: String
+    companion_status: String
+    recurring_meeting_id: String
+    recurring_invite: Boolean
+    dataSource: DataSource
+    event_id: String
+    event: Event @belongsTo
+    event_instance_id: String
+    eventInstance: EventInstance @belongsTo
+    internal_meeting_id: String
+    companion_details: CompanionDetails
+}
+
+type MeetingSessionStatusResponse {
+    id: ID!
+    status: MeetingSessionStatus!
+}
+
+type Mutation {
+    updateMeetingSessionInvitePulse(
+        input: UpdateMeetingSessionInvitePulseInput!
+    ): MeetingSession!
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\UpdateMeetingSessionInvitePulseMutation"
+        )
+}
+
+"Defines a date range with required from and to fields."
+input DateRangeInput {
+    "Start of the date range (inclusive)."
+    from: Date!
+
+    "End of the date range (inclusive)."
+    to: Date!
+}
+
+"Input for re-ingesting a meeting session transcript to a target pulse"
+input ReingestMeetingSessionTranscriptInput {
+    meetingSessionId: ID!
+    targetPulseId: ID!
+}

@@ -1,0 +1,52 @@
+{
+  "pulseTemplates": [
+    {
+      "name": "Zaiko",
+      "features": [
+        "Employee Onboarding",
+        "Performance Management",
+        "Compensation and Benefits",
+        "Leave Management"
+      ],
+      "type": "hr",
+      "status": "live",
+      "description": "A pulse focused on HR policies, procedures, and employee inquiries."
+    },
+    {
+      "name": "Sales",
+      "features": [
+        "Strategy Development",
+        "Customer Management",
+        "Performance Metrics",
+        "Training Programs"
+      ],
+      "type": "finance",
+      "status": "live",
+      "description": "lorem ipsum dolor sit amet"
+    },
+    {
+      "name": "Projects",
+      "features": [
+        "Product Development ",
+        "User Experience Design",
+        "Market Analysis",
+        "Performance Metrics"
+      ],
+      "type": "admin",
+      "status": "live",
+      "description": "lorem ipsum dolor sit amet"
+    },
+    {
+      "name": "Onboarding",
+      "features": [
+        "Pre-Onboarding",
+        "Orientation Process",
+        "Training Plans",
+        "Feedback & Evaluation"
+      ],
+      "type": "hr",
+      "status": "live",
+      "description": "lorem ipsum dolor sit amet"
+    }
+  ]
+}

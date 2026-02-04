@@ -1,0 +1,55 @@
+{
+  "app_id": "${app_id}",
+  "display_information": {
+    "description": "${description}",
+    "name": "${app_name}"
+  },
+  "features": {
+    "bot_user": {
+      "always_online": true,
+      "display_name": "${bot_name}"
+    },
+    "slash_commands": ${jsonencode(slash_commands)}
+  },
+  "oauth_config": {
+    "redirect_urls": [
+      "${redirect_urls}"
+    ],
+    "scopes": {
+      "bot": [
+        "app_mentions:read",
+        "channels:history",
+        "channels:read",
+        "chat:write.public",
+        "chat:write",
+        "commands",
+        "groups:history",
+        "im:history"
+      ],
+      "user": [
+        "channels:history",
+        "channels:read",
+        "chat:write",
+        "groups:history",
+        "im:history"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "bot_events": [
+        "app_mention",
+        "message.im"
+      ],
+      "user_events": [
+        "message.im"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": true,
+    "token_rotation_enabled": false
+  }
+}

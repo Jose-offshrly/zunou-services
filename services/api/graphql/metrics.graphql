@@ -1,0 +1,22 @@
+type MonthlyQuestion {
+    question: String
+    rank: Int
+}
+
+type MonthlySummary {
+    title: String
+    value: Int
+    unit: String
+    comparisonValue: Int
+    comparison: String
+}
+
+type TimeSavedDataPoint {
+    time: Int
+    month: Int
+    year: Int
+}
+
+type TrendingTopic {
+    title: String
+}

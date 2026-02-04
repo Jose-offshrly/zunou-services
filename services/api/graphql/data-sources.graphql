@@ -1,0 +1,229 @@
+"The status of the data source."
+enum DataSourceStatus {
+    DELETED
+    FAILED
+    INDEXED
+    INDEXING
+}
+
+"The type of data source."
+enum DataSourceType {
+    csv
+    doc
+    docx
+    html
+    markdown
+    pdf
+    ppt
+    pptx
+    rtf
+    text
+    xls
+    xlsx
+    mp4
+    jpeg
+    png
+}
+
+"The origin of the data source."
+enum DataSourceOrigin @enum(class: "App\\Enums\\DataSourceOrigin") {
+    PRESET
+    CUSTOM
+    MEETING
+    NOTE
+    ON_DEVICE
+}
+
+"Input for creating data sources."
+input CreateDataSourceInput {
+    "A description of the data source's contents, and what the data can be used for."
+    description: String @rules(apply: ["max:5000"])
+
+    "The S3 key that the data file was uploaded to."
+    fileKey: String
+        @rename(attribute: "file_key")
+        @rules(apply: ["min:20", "max:250", "required"])
+
+    "The file name of the data source"
+    fileName: String
+        @rename(attribute: "file_name")
+        @rules(apply: ["min:5", "max:250"])
+
+    "The name of the data source."
+    name: String @rules(apply: ["max:250", "required"])
+
+    "The organization that data source belongs to."
+    organizationId: String!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required", "exists:organizations,id"])
+
+    "The pulse ID that data source belongs to."
+    pulseId: String
+        @rename(attribute: "pulse_id")
+        @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
+
+    "The type of data source."
+    type: DataSourceType!
+
+    "The origin of the data source."
+    origin: DataSourceOrigin
+}
+
+"Input for creating a note as a data source."
+input CreateNoteDataSourceInput {
+    "The ID of the note to convert to a data source."
+    noteId: String!
+        @rename(attribute: "note_id")
+        @rules(apply: ["min:36", "max:36", "required", "exists:notes,id"])
+
+    "The organization that the note belongs to."
+    organizationId: String!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required", "exists:organizations,id"])
+
+    "The pulse ID that the note belongs to."
+    pulseId: String!
+        @rename(attribute: "pulse_id")
+        @rules(apply: ["min:36", "max:36", "required", "exists:pulses,id"])
+
+    "Custom name for the data source (optional, defaults to note title)."
+    name: String @rules(apply: ["max:250"])
+
+    "Custom description for the data source (optional, defaults to note content preview)."
+    description: String @rules(apply: ["max:5000"])
+}
+
+"Input for deleting data sources."
+input DeleteDataSourceInput {
+    "The ID of the data source to delete"
+    id: UUID! @rules(apply: ["required"])
+
+    "The organization that data source belongs to."
+    organizationId: UUID!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required"])
+}
+
+"Input for updating data sources."
+input UpdateDataSourceInput {
+    "A description of the Data Source's contents, and what the data can be used for."
+    description: String @rules(apply: ["max:5000"])
+
+    "A summary of the Data Source's contents, and what the data can be used for."
+    summary: String @rules(apply: ["max:5000"])
+
+    "Key of the uploaded file in cloud storage."
+    fileKey: String
+
+    "The ID of the data source to update"
+    id: UUID! @rules(apply: ["required"])
+
+    "The name of the data source."
+    name: String @rules(apply: ["min:1", "max:250", "required"])
+
+    "The organization that agent belongs to."
+    organizationId: String!
+        @rename(attribute: "organization_id")
+        @rules(apply: ["min:36", "max:36", "required"])
+
+    "The pulse ID that data source belongs to."
+    pulseId: UUID!
+        @rename(attribute: "pulse_id")
+        @rules(apply: ["min:36", "max:36", "required"])
+
+    "Indicates whether the data source is visible to users outside the organization."
+    is_viewable: Boolean
+}
+
+"A CSV data source belonging to an Organization."
+type DataSourceUrl {
+    "Mime type for the data source file"
+    mime: String!
+
+    "Url of the data source"
+    url: String!
+}
+
+"A CSV data source belonging to an Organization."
+type CsvDataSource {
+    "Timestamp when the source was created."
+    createdAt: DateTime!
+
+    "A description of the CSV's contents, and what the data can be used for."
+    description: String
+
+    "Unique primary key."
+    id: UUID!
+
+    "Key of the uploaded file in cloud storage."
+    fileKey: String!
+
+    "Unique name."
+    name: String!
+
+    "The ID of the organization that owns the data source."
+    organizationId: UUID!
+
+    "Status of the data source."
+    status: DataSourceStatus!
+
+    "The type of data source"
+    type: DataSourceType!
+
+    "Timestamp when the data source was last updated."
+    updatedAt: DateTime!
+}
+
+"An data source belonging to an Organization."
+type DataSource {
+    "Timestamp when the source was created."
+    createdAt: DateTime!
+
+    "A description of the data source's contents, and what the data can be used for."
+    description: String
+
+    "Unique primary key."
+    id: UUID!
+
+    "Unique name."
+    name: String!
+
+    "The ID of the organization that owns the data source."
+    organizationId: UUID!
+
+    "The ID of the pulse that owns the data source."
+    pulseId: UUID!
+
+    "Status of the data source."
+    status: DataSourceStatus!
+
+    "An auto-generated summary of the data source."
+    summary: String
+
+    "The type of data source"
+    type: DataSourceType!
+
+    "Timestamp when the data source was last updated."
+    updatedAt: DateTime!
+
+    "Indicates whether the data source is visible to users outside the organization."
+    is_viewable: Boolean
+
+    "The origin of the data source (preset by admin or added by user)"
+    origin: DataSourceOrigin!
+
+    "The associated meeting of the data source"
+    meeting: Meeting @hasOne(relation: "meeting")
+
+    "The associated transcript of the data source"
+    transcript: Transcript @hasOne(relation: "transcript")
+
+    "The tl;dr of the data source"
+    tldr: String
+
+    "The sentiment of the data source"
+    sentiment: String
+
+    "The action items from summaries associated with this data source"
+    actionItems: [ActionItem]! @method(name: "getActionItemsAttribute")
+}

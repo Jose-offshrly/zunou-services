@@ -1,0 +1,28 @@
+enum SyncStatus @enum(class: "App\\Enums\\SyncStatus") {
+    IN_PROGRESS
+    DONE
+    FAILED
+}
+
+input CreateIntegrationInput {
+    pulse_id: String! @rules(apply: ["min: 36", "max: 36"])
+    type: String!
+    api_key: String!
+    secret_key: String
+}
+
+input RefetchIntegrationInput {
+    user_id: String!
+    pulse_id: String!
+    type: String!
+}
+
+"Integration resource for a pulse"
+type Integration {
+    id: ID!
+    pulse_id: String!
+    user_id: String!
+    type: String!
+    api_key: String!
+    sync_status: SyncStatus!
+}

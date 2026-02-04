@@ -1,0 +1,61 @@
+enum SettingMode @enum(class: "App\\Enums\\SettingMode") {
+    COLOR
+    IMAGE
+}
+
+enum WeekendDisplay @enum(class: "App\\Enums\\WeekendDisplay") {
+    default
+    blocked_out
+    hidden
+}
+
+type Setting {
+    id: ID!
+    userId: ID!
+    organizationId: ID!
+    theme: String! @cache(maxAge: 600, private: true)
+    color: String! @cache(maxAge: 600, private: true)
+    metadata: Metadata! @cache(maxAge: 600, private: true)
+    mode: SettingMode! @cache(maxAge: 600, private: true)
+    weekendDisplay: WeekendDisplay! @cache(maxAge: 600, private: true)
+}
+
+input CreateSettingInput {
+    userId: ID! @rules(apply: ["min: 36", "max: 36", "required"])
+    organizationId: ID! @rules(apply: ["min: 36", "max: 36", "required"])
+    theme: String! @rules(apply: ["required", "max: 250"])
+    color: String! @rules(apply: ["required", "max: 250"])
+    mode: SettingMode!
+    weekendDisplay: WeekendDisplay
+    "The S3 key that the data file was uploaded to."
+    fileKey: String
+        @rename(attribute: "file_key")
+        @rules(apply: ["min:20", "max:250"])
+
+    "The file name of the data source"
+    fileName: String
+        @rename(attribute: "file_name")
+        @rules(apply: ["min:5", "max:250"])
+}
+
+input UpdateSettingInput {
+    settingId: ID! @rules(apply: ["min: 36", "max: 36", "required"])
+    theme: String! @rules(apply: ["required", "max: 250"])
+    color: String! @rules(apply: ["required", "max: 250"])
+    mode: SettingMode!
+    weekendDisplay: WeekendDisplay
+    "The S3 key that the data file was uploaded to."
+    fileKey: String
+        @rename(attribute: "file_key")
+        @rules(apply: ["min:20", "max:250"])
+
+    "The file name of the data source"
+    fileName: String
+        @rename(attribute: "file_name")
+        @rules(apply: ["min:5", "max:250"])
+}
+
+type SettingImage {
+    url: String
+    fileName: String
+}

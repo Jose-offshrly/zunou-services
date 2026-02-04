@@ -1,0 +1,24 @@
+{
+  "chatCategories": [
+    {
+      "title": "HR Pulse",
+      "description": "Where HR queries meet quick solutions",
+      "isAvailable": true
+    },
+    {
+      "title": "Legal Pulse",
+      "description": "Coming soon",
+      "isAvailable": false
+    },
+    {
+      "title": "Finance Pulse",
+      "description": "Coming soon",
+      "isAvailable": false
+    },
+    {
+      "title": "Training Pulse",
+      "description": "Coming soon",
+      "isAvailable": false
+    }
+  ]
+}

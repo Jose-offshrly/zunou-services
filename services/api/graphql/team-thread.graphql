@@ -1,0 +1,16 @@
+"Input for creating team threads."
+input CreateTeamThreadInput {
+    pulseId: ID! @rules(apply: ["required", "exists:pulses,id", "min:36", "max:36"])
+    organizationId: ID! @rules(apply: ["required", "exists:organizations,id", "min:36", "max:36"])
+}
+
+"Team thread resource"
+type TeamThread {
+    id: ID!
+    pulseId: ID!
+    organizationId: ID!
+    teamMessages: [TeamMessage!] @hasMany
+    topics: [Topic!] @hasMany
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}

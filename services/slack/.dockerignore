@@ -1,0 +1,6 @@
+**/*.test.ts
+.dockerignore
+dist
+Dockerfile
+node_modules
+src/tests

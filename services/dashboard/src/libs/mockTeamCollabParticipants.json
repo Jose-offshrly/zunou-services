@@ -1,0 +1,40 @@
+{
+  "participants": [
+    {
+      "id": 1,
+      "email": "john@gmail.com",
+      "name": "John Doe",
+      "presence": "active"
+    },
+    {
+      "id": 2,
+      "email": "jane@gmail.com",
+      "name": "Jane Smith",
+      "presence": "active"
+    },
+    {
+      "id": 3,
+      "email": "alex@gmail.com",
+      "name": "Alex Johnson",
+      "presence": "inactive"
+    },
+    {
+      "id": 4,
+      "email": "maria@gmail.com",
+      "name": "Maria Garcia",
+      "presence": "busy"
+    },
+    {
+      "id": 5,
+      "email": "daniel@gmail.com",
+      "name": "Daniel Lee",
+      "presence": "active"
+    },
+    {
+      "id": 6,
+      "email": "lisa@gmail.com",
+      "name": "Lisa Brown",
+      "presence": "away"
+    }
+  ]
+}

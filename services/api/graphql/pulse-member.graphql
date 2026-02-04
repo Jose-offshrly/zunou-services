@@ -1,0 +1,85 @@
+"The role of the user in the organization."
+enum PulseMemberRole @enum(class: "App\\Enums\\PulseMemberRole") {
+    OWNER
+    ADMIN
+    STAFF
+    GUEST
+}
+
+"The role of the user in the organization."
+enum PulseGuestRole @enum(class: "App\\Enums\\PulseMemberRole") {
+    ADMIN
+    STAFF
+    GUEST
+}
+
+"Input for creating a pulse member."
+input CreatePulseMemberInput {
+    "ID of the user member."
+    userId: ID!
+        @rules(apply: [
+            "required"
+            "min:36" 
+            "max:36"
+            "exists:users,id"
+        ])
+
+    "The role for the user member."
+    role: PulseGuestRole!
+}
+
+"input for inviting guest to pulses"
+input InvitePulseGuestInput {
+    "email of the guest user"
+    email: String!
+    "role of the guest user"
+    role: PulseGuestRole!
+    "ID of the organization to associate the guest user"
+    organizationId: ID!
+    "ID of the pulse to associate the guest user"
+    pulseId: ID!
+}
+
+"Input for update a pulse member role."
+input UpdatePulseMemberRoleInput {
+    "ID of the pulse associated to the member."
+    pulseId: ID!
+
+    "ID of the user member."
+    userId: ID!
+
+    "The role for the user member."
+    role: PulseMemberRole!
+
+    "ID of the organization associated to the member."
+    organizationId: ID!
+}
+
+"Input for updating a pulse member."
+input UpdatePulseMemberInput {
+    "ID of the pulse member"
+    pulseMemberId: ID!
+
+    "Job Description of the member"
+    jobDescription: String!
+
+    "Responsibilities of the member"
+    responsibilities: [String!]!
+}
+
+type PulseMember {
+    id: ID!
+    pulseId: ID!
+    userId: ID!
+    user: User! @with(relation: "user")
+    role: PulseMemberRole! @cache(maxAge: 300, private: true)
+    created_at: DateTime
+    updated_at: DateTime
+    pulse: Pulse @with(relation: "pulse")
+    organizationUser: OrganizationUser @with(relation: "organizationUser")
+    job_description: String @cache(maxAge: 600, private: true)
+    responsibilities: [String!] @cache(maxAge: 600, private: true)
+    one_to_one: String
+    last_visited: DateTime
+    order: Int @cache(maxAge: 300, private: true)
+}

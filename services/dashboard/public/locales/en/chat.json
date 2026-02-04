@@ -1,0 +1,14 @@
+{
+  "pinned_message": "Pinned Message",
+  "unpinned_message": "Unpinned Message",
+  "failed_to_add_reaction": "Failed to add reaction",
+  "missing_pulse_id": "Missing pulse ID.",
+  "team_chat_not_initialized": "Team chat not initialized",
+  "failed_to_send_message": "Failed to send message",
+  "reply_thread_not_initialized": "Reply thread not initialized",
+  "failed_to_send_reply": "Failed to send reply",
+  "message_deleted_successfully": "Message deleted successfully",
+  "failed_to_delete_message": "Failed to delete message",
+  "message_unpinned": "Message unpinned",
+  "failed_to_unpin_message": "Failed to unpin message"
+}

@@ -1,0 +1,11 @@
+spectaql:
+    oneFile: true
+    targetDir: ./public/docs
+
+introspection:
+    schemaFile: ./storage/app/lighthouse-schema.graphql #trigger github action to generate
+
+info:
+    title: 'Zunou Pulse API'
+    description: 'The zunou pulse api documentation'
+    x-url: ${CORE_GRAPHQL_URL}

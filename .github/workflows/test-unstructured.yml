@@ -1,0 +1,40 @@
+name: unstructured (test)
+
+# Cancel in-progress jobs.
+concurrency:
+  group: unstructured-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    # Only run tests on pull requests.
+    branches-ignore:
+      - 'main'
+      - 'production' 
+      - 'production-candidate-*' 
+    paths:
+      - .github/workflows/test-unstructured.yml
+      - services/unstructured/**
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    outputs:
+      status: ${{ steps.changes.conclusion }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            unstructured:
+              - .github/workflows/test-unstructured.yml
+              - services/unstructured/**
+
+      - name: Check service changed
+        if: steps.changes.outputs.unstructured == 'true'
+        run: echo "Service has changed - running CI" # exit_with_success
+

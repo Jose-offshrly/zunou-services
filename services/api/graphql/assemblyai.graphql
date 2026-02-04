@@ -1,0 +1,21 @@
+input GenerateAssemblyaiRealtimeClientSecretInput {
+    organizationId: ID!
+        @rules(apply: ["min:36", "max:36", "exists:organizations,id"])
+        @where(key: "organization_id", operator: "=")
+    
+    """
+    Optional system instructions applied when creating a Realtime session.
+    Used to guide the assistant’s behavior for the duration of the session.
+    """
+    instructions: String
+}
+
+extend type Mutation {
+    generateAssemblyaiRealtimeClientSecret(
+        input: GenerateAssemblyaiRealtimeClientSecretInput!
+    ): String!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\GenerateAssemblyaiRealtimeClientSecretMutation"
+        )
+}

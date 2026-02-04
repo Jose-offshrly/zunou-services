@@ -1,0 +1,56 @@
+"Input for creating topics."
+input CreateTopicInput {
+    teamThreadId: ID @rules(apply: ["nullable", "exists:team_threads,id", "min:36", "max:36"])
+
+    "Used when creating a topic-specific thread if teamThreadId is not provided."
+    organizationId: ID @rules(apply: ["nullable", "exists:organizations,id", "min:36", "max:36"])
+    pulseId: ID @rules(apply: ["nullable", "exists:pulses,id", "min:36", "max:36"])
+
+    name: String! @rules(apply: ["required", "max:255"])
+    referenceId: ID @rules(apply: ["nullable"])
+    referenceType: TopicReferenceType @rules(apply: ["nullable"])
+}
+
+enum TopicReferenceType {
+    insights
+}
+
+
+"Input for updating topics."
+input UpdateTopicInput {
+    topicId: ID! @rules(apply: ["required", "exists:topics,id"])
+    name: String @rules(apply: ["max:255"])
+}
+
+"Input for deleting topics."
+input DeleteTopicInput {
+    topicId: ID! @rules(apply: ["required", "exists:topics,id"])
+}
+
+enum TopicEntityType {
+    teamThread
+    thread
+}
+
+"Topic resource"
+type Topic {
+    id: ID!
+    name: String!
+    createdBy: ID!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    "Number of unread messages in this topic for the current user"
+    unreadCount: Int! @field(resolver: "App\\GraphQL\\Queries\\TopicUnreadCountQuery")
+    creator: User @belongsTo
+    teamThread: TeamThread @field(resolver: "App\\GraphQL\\Resolvers\\TopicFieldResolver@teamThread")
+    thread: Thread @field(resolver: "App\\GraphQL\\Resolvers\\TopicFieldResolver@thread")
+    teamMessages: [TeamMessage!] @hasMany
+    messages: [Message!] @field(resolver: "App\\GraphQL\\Resolvers\\TopicFieldResolver@messages")
+    insight: LiveInsightOutbox @field(resolver: "App\\GraphQL\\Resolvers\\TopicFieldResolver@insight")
+}
+
+"Paginated result of topics"
+type TopicPaginator {
+    data: [Topic!]!
+    paginatorInfo: PaginatorInfo!
+}

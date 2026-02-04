@@ -1,0 +1,39 @@
+{
+  "ai_agents": "AI Agents",
+  "no_agents": "No AI agents available",
+
+  "add_agent": "Add agent",
+  "delete_agent_error": "Failed to delete agent",
+  "delete_agent_success": "Agent succesfully deleted",
+  "agent_store": "Agent Store",
+  "search_ai_agents": "Search AI Agents",
+
+  "update_agent_success": "Agent updated successfully",
+  "update_agent_error": "Failed to update agent",
+
+  "workspace_link": "Workspace Link",
+  "project_id": "Project ID",
+  "tools": "Tools",
+
+  "agent_guidelines_placeholder": "Write guidelines for the AI Agent",
+  "integration_description": "Connect your AI Agent with the tools and services it needs to operate effectively. This section covers the configuration of external APIs, credentials, repositories, and other third-party integrations that power the agent’s capabilities.",
+  "jira_integration_description": "To connect Jira, sign in with your Jira account using OAuth. We'll request the necessary permissions to manage your integration securely.",
+  "settings_description": "Configure the integration settings for your agent. Provide the required fields based on the selected integration type.",
+  "tools_description": "Get a quick overview of how this AI Agent is configured and what tools it uses to function. This includes a summary of integrated services, capabilities, and customization details. For a deeper dive into setup, usage patterns, and best practices, view the full documentation below.",
+  "documentation_description": " Get a quick overview of how this AI Agent is configured and what tools it uses to function. This includes a summary of integrated services, capabilities, and customization details. For a deeper dive into setup, usage patterns, and best practices, view the full documentation below.",
+  "full_documentation": "Full Documentation",
+  "click_to_redirect": "Click to redirect",
+  "or_visit": "or visit",
+  "connect_to_jira": "Connect to Jira",
+  "connected": "Connected",
+  "connecting": "Connecting",
+
+  "create_agent_success": "Agent created successfully",
+  "create_agent_error": "Failed to create agent",
+
+  "agent_settings_placeholder": "Software Development Board",
+  "add_ai_agents": "Add AI Agents",
+
+  "username_or_email": "Username or Email",
+  "type_your_username_or_email_here": "Type your Username or Email here"
+}

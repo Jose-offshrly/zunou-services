@@ -1,0 +1,31 @@
+type AutomationLog {
+    id: ID!
+    description: String!
+    properties: AutomationRunLog
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+type AutomationRunLog {
+    runAt: String!
+    logs: [AutomationLogEntry!]!
+}
+
+type AutomationLogEntry {
+    level: String!
+    message: String!
+    context: [String!]
+}
+
+type Automation {
+    id: ID!
+    strategyId: ID!
+    userId: ID!
+    onQueue: Boolean!
+    type: String!
+    nextRunAt: DateTime!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    activities: [AutomationLog!]!
+        @field(resolver: "App\\GraphQL\\Queries\\AutomationActivitiesQuery")
+}
