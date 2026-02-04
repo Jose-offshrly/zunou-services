@@ -39,7 +39,7 @@ class FetchGoogleCalendarEventsJob implements ShouldQueue
             try {
                 // Initialize Google Calendar service
                 $googleCalendarService = new GoogleCalendarService(
-                    $user->google_calendar_refresh_token,
+                    $user,
                 );
 
                 // Calculate current week Monday to next week Sunday
