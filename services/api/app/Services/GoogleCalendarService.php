@@ -114,9 +114,8 @@ class GoogleCalendarService
                     ],
                 );
 
-                throw new \Exception(
-                    "Failed to initialize with refresh token: {$accessToken['error_description']}",
-                );
+                // Do not throw exception here, just log and return
+                return;
             }
 
             $this->client->setAccessToken($accessToken);
@@ -132,7 +131,8 @@ class GoogleCalendarService
                 ],
             );
 
-            throw $e;
+            // Do not throw exception here, just log and return
+            return;
         }
     }
 
