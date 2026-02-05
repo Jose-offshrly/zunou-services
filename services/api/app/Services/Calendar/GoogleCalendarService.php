@@ -12,7 +12,7 @@ use Exception;
 use Google\Client;
 use Google\Service\Calendar;
 use Illuminate\Support\Facades\Log;
-
+use App\Exceptions\GoogleCalendarInsufficientPermissionsException;
 class GoogleCalendarService implements CalendarInterface
 {
     protected Client $client;
@@ -27,10 +27,17 @@ class GoogleCalendarService implements CalendarInterface
         // surface a clear, domain-specific exception so callers can prompt re-linking.
         try {
             TokenManager::refreshGoogleToken($user, $credentials);
-        } catch (\Exception $e) {
-            if (str_contains($e->getMessage(), 'Token has been expired or revoked')) {
+            if (
+                str_contains($e->getMessage(), 'Token has been expired or revoked') ||
+                str_contains($e->getMessage(), 'invalid_grant') ||
+                str_contains($e->getMessage(), 'Account has been deleted')
+            ) {
+                $message = 'Google Calendar token is invalid, expired, revoked, or the account has been deleted. User must re-link Google Calendar.';
 
-                $message = 'Google Calendar token has been expired or revoked. User must re-link Google Calendar.';
+                // Remove the user's Google Calendar credentials
+                $this->user->google_calendar_credentials = null;
+                $this->user->save();
+
                 broadcast(new GoogleCalendarTokenRevoked($this->user, $message));
 
                 throw new GoogleCalendarTokenRevokedException(
@@ -41,7 +48,6 @@ class GoogleCalendarService implements CalendarInterface
             }
 
             throw $e;
-        }
 
         $this->client = new Client();
         $this->client->setAccessToken($credentials['access_token']);
