@@ -99,41 +99,8 @@ class GoogleCalendarService
      */
     private function initializeWithRefreshToken(string $refreshToken): void
     {
-        try {
-            $accessToken = $this->client->fetchAccessTokenWithRefreshToken(
-                $refreshToken,
-            );
-
-            // Check if the response contains an error
-            if (isset($accessToken['error'])) {
-                Log::error(
-                    'Error fetching access token with refresh token in constructor',
-                    [
-                        'error'             => $accessToken['error'],
-                        'error_description' => $accessToken['error_description'] ?? 'No description provided',
-                    ],
-                );
-
-                throw new \Exception(
-                    "Failed to initialize with refresh token: {$accessToken['error_description']}",
-                );
-            }
-
-            $this->client->setAccessToken($accessToken);
-
-            Log::info(
-                'Successfully initialized GoogleCalendarService with refresh token',
-            );
-        } catch (\Exception $e) {
-            Log::error(
-                'Failed to initialize GoogleCalendarService with refresh token',
-                [
-                    'error' => $e->getMessage(),
-                ],
-            );
-
-            throw $e;
-        }
+        $this->refreshToken = $refreshToken;
+        // Do not fetch access token here; defer to explicit calls
     }
 
     /**
