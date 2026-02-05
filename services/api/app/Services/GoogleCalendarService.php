@@ -114,13 +114,15 @@ class GoogleCalendarService
                     ],
                 );
 
-                throw new \Exception(
-                    "Failed to initialize with refresh token: {$accessToken['error_description']}",
-                );
+                // Instead of throwing, set an internal flag and log the error
+                $this->isAuthorized = false;
+                $this->authError = $accessToken['error_description'] ?? $accessToken['error'];
+                return;
             }
-
+    
             $this->client->setAccessToken($accessToken);
-
+            $this->isAuthorized = true;
+    
             Log::info(
                 'Successfully initialized GoogleCalendarService with refresh token',
             );
@@ -131,8 +133,10 @@ class GoogleCalendarService
                     'error' => $e->getMessage(),
                 ],
             );
-
-            throw $e;
+            $this->isAuthorized = false;
+            $this->authError = $e->getMessage();
+            // Do not throw, just return
+            return;
         }
     }
 
