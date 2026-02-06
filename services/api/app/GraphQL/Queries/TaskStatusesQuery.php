@@ -12,26 +12,21 @@ readonly class TaskStatusesQuery
 {
     public function __invoke($rootValue, array $args): Collection
     {
-        $pulseId  = $args['pulseId']  ?? null;
-        $defaults = $args['defaults'] ?? false;
+        $pulseId = $args['pulseId'] ?? null;
 
-        // Validate mutual exclusivity
-        if ($pulseId && $defaults) {
-            throw new Error('Cannot provide both pulseId and defaults. They are mutually exclusive.');
+        if (!$pulseId) {
+            throw new Error('pulseId is required.');
         }
 
-        $query = TaskStatus::query();
-
-        if (isset($pulseId)) {
-            $query->where('pulse_id', $pulseId);
-        }
-
-        if ($defaults) {
-            $query->where('type', 'default');
-        }
-
-        // Order by position (null positions go to end)
-        $query->orderByRaw('position IS NULL, position ASC');
+        $query = TaskStatus::query()
+            ->where('pulse_id', $pulseId)
+            ->orderByRaw("
+                CASE system_type
+                    WHEN 'start' THEN 1
+                    WHEN 'middle' THEN 2
+                    WHEN 'end' THEN 3
+                END, position ASC NULLS LAST
+            ");
 
         return $query->get();
     }

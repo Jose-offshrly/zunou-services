@@ -2,7 +2,6 @@
 
 namespace App\GraphQL\Mutations;
 
-use App\Enums\PulseStatusOption;
 use App\Models\Pulse;
 use GraphQL\Error\Error;
 use Illuminate\Support\Facades\Validator;
@@ -45,16 +44,6 @@ final readonly class UpdatePulseMutation
         $pulse->name         = $input['name'];
         $pulse->description  = $input['description'];
         $pulse->icon         = $input['icon'];
-        
-        if (isset($input['status_option'])) {
-            // GraphQL passes enum case names (e.g., "DEFAULT"), convert to enum instance
-            $statusOptionValue = $input['status_option'];
-            $pulse->status_option = match ($statusOptionValue) {
-                'DEFAULT' => PulseStatusOption::DEFAULT,
-                'CUSTOM' => PulseStatusOption::CUSTOM,
-                default => PulseStatusOption::tryFrom($statusOptionValue) ?? PulseStatusOption::DEFAULT,
-            };
-        }
         
         $pulse->save();
 

@@ -2,7 +2,6 @@
 
 namespace App\Observers;
 
-use App\Jobs\ResyncTaskStatusesOnReorderJob;
 use App\Jobs\UpdateTasksForDeletedTaskStatusJob;
 use App\Models\Task;
 use App\Models\TaskStatus;
@@ -12,72 +11,47 @@ use Illuminate\Support\Facades\Log;
 class TaskStatusObserver implements ShouldHandleEventsAfterCommit
 {
     /**
-     * Handle the TaskStatus "updated" event.
-     * Trigger re-sync when custom status positions are reordered.
-     */
-    public function updated(TaskStatus $taskStatus): void
-    {
-        // Only process if position changed and it's a custom status for a pulse
-        if (
-            !$taskStatus->isDirty('position') ||
-            !$taskStatus->pulse_id ||
-            $taskStatus->type !== null
-        ) {
-            return;
-        }
-
-        Log::info('TaskStatusObserver position changed', [
-            'status_id' => $taskStatus->id,
-            'pulse_id' => $taskStatus->pulse_id,
-            'old_position' => $taskStatus->getOriginal('position'),
-            'new_position' => $taskStatus->position,
-        ]);
-    }
-
-    /**
      * Handle the TaskStatus "deleted" event.
      */
     public function deleting(TaskStatus $taskStatus): void
     {
         Log::info('TaskStatusObserver deleting called', [
             'status_id' => $taskStatus->id,
-            'pulse_id' => $taskStatus->pulse_id,
-            'position' => $taskStatus->position,
+            'pulse_id'  => $taskStatus->pulse_id,
+            'position'  => $taskStatus->position,
         ]);
 
         // Only process if the task status belongs to a pulse
-        if (!$taskStatus->pulse_id || !$taskStatus->position) {
-            Log::info(
-                'TaskStatusObserver deleting skipped – missing pulse_id or position',
-                [
-                    'status_id' => $taskStatus->id,
-                    'pulse_id' => $taskStatus->pulse_id,
-                    'position' => $taskStatus->position,
-                ]
-            );
+        if (! $taskStatus->pulse_id || ! $taskStatus->position) {
+            Log::info('TaskStatusObserver deleting skipped – missing pulse_id or position', [
+                'status_id' => $taskStatus->id,
+                'pulse_id'  => $taskStatus->pulse_id,
+                'position'  => $taskStatus->position,
+            ]);
             return;
         }
 
         $deletedPosition = $taskStatus->position;
-        $pulseId = $taskStatus->pulse_id;
+        $pulseId         = $taskStatus->pulse_id;
         $deletedStatusId = $taskStatus->id;
 
         Log::info('TaskStatusObserver deleting processing', [
             'deleted_status_id' => $deletedStatusId,
-            'pulse_id' => $pulseId,
-            'deleted_position' => $deletedPosition,
+            'pulse_id'          => $pulseId,
+            'deleted_position'  => $deletedPosition,
         ]);
 
         // Resolve the replacement position for the deleted status:
         // - if the deleted position is 1, use position 2
         // - otherwise, use position - 1 for the same pulse
-        $replacementPosition =
-            $deletedPosition === 1 ? 2 : $deletedPosition - 1;
+        $replacementPosition = $deletedPosition === 1
+            ? 2
+            : $deletedPosition - 1;
 
         Log::info('TaskStatusObserver replacement position resolved', [
-            'deleted_position' => $deletedPosition,
+            'deleted_position'     => $deletedPosition,
             'replacement_position' => $replacementPosition,
-            'pulse_id' => $pulseId,
+            'pulse_id'             => $pulseId,
         ]);
 
         // Find all tasks under this pulse that reference the deleted status
@@ -89,8 +63,8 @@ class TaskStatusObserver implements ShouldHandleEventsAfterCommit
 
         Log::info('Tasks found for TaskStatus deletion', [
             'deleted_status_id' => $deletedStatusId,
-            'pulse_id' => $pulseId,
-            'tasks_found' => $tasks->count(),
+            'pulse_id'          => $pulseId,
+            'tasks_found'       => $tasks->count(),
         ]);
 
         // Move the actual update work to a queued job, but
@@ -103,7 +77,7 @@ class TaskStatusObserver implements ShouldHandleEventsAfterCommit
             deletedStatusId: (string) $deletedStatusId,
             deletedPosition: (int) $deletedPosition,
             replacementPosition: (int) $replacementPosition,
-            taskIds: $taskIds
+            taskIds: $taskIds,
         );
     }
 }

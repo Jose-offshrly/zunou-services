@@ -109,7 +109,7 @@ class GoogleCalendarDeltaSyncOrchestratorJob implements ShouldQueue
             ->whereNotNull('google_event_id')
             ->exists();
 
-        if ($hasExistingEvents) {
+        if ($hasExistingEvents && $this->pulseId === null) {
             $syncToken = $user->google_calendar_sync_token;
             Log::info('Using sync token for incremental delta sync', [
                 'user_id'        => $user->id,

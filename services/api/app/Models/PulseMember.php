@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use App\Jobs\SyncPulseMemberNotificationsJob;
 
 #[ObservedBy(PulseMemberObserver::class)]
 class PulseMember extends BaseModel
@@ -38,18 +39,10 @@ class PulseMember extends BaseModel
     protected static function booted()
     {
         static::created(function ($pulseMember) {
-            $pulseMember->load(['pulse', 'user']);
-            $pulse = $pulseMember->pulse;
-            $user = $pulseMember->user;
-
-            // Attach all existing notifications for this pulse to the new user
-            $notificationIds = $pulse->notifications()->pluck('id');
-            $now = now();
-            foreach ($notificationIds as $id) {
-                $user->notifications()->syncWithoutDetaching([
-                    $id => ['read_at' => $now],
-                ]);
-            }
+            SyncPulseMemberNotificationsJob::dispatch(
+                $pulseMember->pulse_id,
+                $pulseMember->user_id
+            );
         });
     }
 

@@ -803,6 +803,12 @@ type Query @guard {
         "Excludes tasks with this status"
         excludeStatus: TaskStatus
 
+        "Filters by custom task status ID"
+        taskStatusId: ID @rules(apply: ["min:36", "max:36", "exists:task_statuses,id"])
+
+        "Excludes tasks with this custom task status ID"
+        excludeTaskStatusId: ID @rules(apply: ["min:36", "max:36", "exists:task_statuses,id"])
+
         "Filters by priority"
         priority: TaskPriority
 
@@ -2161,11 +2167,10 @@ type Query @guard {
         )
         @find(model: "App\\Models\\TaskPhase")
 
-    "Get all task statuses for a pulse or default task statuses. pulseId and defaults are mutually exclusive."
+    "Get all task statuses for a pulse."
     taskStatuses(
-        pulseId: ID
+        pulseId: ID!
             @rules(apply: ["min:36", "max:36", "exists:pulses,id"])
-        defaults: Boolean = false
     ): [TaskStatusType!]!
         @canModel(
             ability: "viewAny"

@@ -6,7 +6,9 @@ namespace App\GraphQL\Mutations;
 
 use App\Actions\Task\UpdateTaskAction;
 use App\DataTransferObjects\Task\TaskData;
+use App\Models\Pulse;
 use App\Models\Task;
+use App\Models\TaskStatus;
 use GraphQL\Error\Error;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -30,6 +32,11 @@ readonly class UpdateTaskMutation
                 throw new Error('Task not found!');
             }
 
+            // Validate task_status_id belongs to the pulse
+            if (isset($args['task_status_id'])) {
+                $this->validateTaskStatusBelongsToPulse($args['task_status_id'], $task);
+            }
+
             $data = new TaskData(
                 title: $args['title'],
                 description: $args['description'] ?? null,
@@ -38,7 +45,7 @@ readonly class UpdateTaskMutation
                     ? $args['category_id']
                     : null,
                 organization_id: $args['organization_id'],
-                status: $args['status'] ?? $task->status->value,
+                status: null, // Will be auto-synced from task_status_id
                 priority: $args['priority'] ?? null,
                 due_date: isset($args['due_date'])
                     ? Carbon::parse(
@@ -94,6 +101,24 @@ readonly class UpdateTaskMutation
 
         if ($validator->fails()) {
             throw new Error($validator->errors()->first());
+        }
+    }
+
+    private function validateTaskStatusBelongsToPulse(string $taskStatusId, Task $task): void
+    {
+        // Get the task's entity (pulse)
+        $entity = $task->taskable;
+        
+        if (!($entity instanceof Pulse)) {
+            return; // Only validate for Pulse entities
+        }
+
+        $taskStatus = TaskStatus::where('id', $taskStatusId)
+            ->where('pulse_id', $entity->id)
+            ->first();
+
+        if (!$taskStatus) {
+            throw new Error('Task status does not belong to the task\'s pulse.');
         }
     }
 }

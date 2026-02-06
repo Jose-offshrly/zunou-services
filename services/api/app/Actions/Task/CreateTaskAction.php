@@ -10,10 +10,11 @@ use App\Contracts\Taskable;
 use App\DataTransferObjects\Task\TaskData;
 use App\Enums\TaskSource;
 use App\Enums\TaskStatus as TaskStatusEnum;
+use App\Enums\TaskStatusSystemType;
 use App\Enums\TaskType;
-use App\Helpers\TaskStatusSyncHelper;
 use App\Models\DataSource;
 use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\User;
 use GraphQL\Error\Error;
 use Illuminate\Support\Facades\DB;
@@ -49,27 +50,9 @@ final class CreateTaskAction
             }
 
             $taskNumber = $this->generateTaskNumberAction->handle($entity);
-
-            // Enforce consistency between status and task_status_id
-            $status = $data->status;
-            $taskStatusId = $data->task_status_id;
-
-            // If task_status_id is provided but status is not, derive status from task_status_id
-            if ($taskStatusId && !$status) {
-                // Status will be synced after creation via helper
-                $status = null;
-            }
-            // If status is provided but task_status_id is not, map status to task_status_id
-            elseif ($status && !$taskStatusId) {
-                $enumStatus = is_string($status)
-                    ? TaskStatusEnum::from($status)
-                    : $status;
-                $taskStatusId = TaskStatusSyncHelper::getCustomStatusIdForEnum(
-                    $enumStatus,
-                    $entity->id
-                );
-            }
-            // If both are provided, trust them but will sync after creation
+            
+            // Sync task_status_id to status enum (one-directional)
+            $status = $this->syncTaskStatusToEnum($data->task_status_id, $data->status);
 
             $task = $entity->tasks()->create([
                 'task_number' => $taskNumber,
@@ -84,16 +67,10 @@ final class CreateTaskAction
                 'due_date' => $data->due_date,
                 'start_date' => $data->start_date,
                 'task_phase_id' => $data->task_phase_id,
-                'task_status_id' => $taskStatusId,
+                'task_status_id' => $data->task_status_id,
                 'progress' => $data->progress,
                 'color' => $data->color,
             ]);
-
-            // Sync status fields to ensure consistency
-            if ($taskStatusId) {
-                // Derive enum status from custom status (either when status is missing or both are provided)
-                TaskStatusSyncHelper::syncCustomStatusToEnum($task);
-            }
 
             if (isset($data->assignees)) {
                 $this->assignTask(task: $task, data: $data);
@@ -239,5 +216,29 @@ final class CreateTaskAction
         }
 
         return false;
+    }
+
+    /**
+     * Sync task_status_id to legacy status enum based on system_type.
+     * Maps: START→TODO, MIDDLE→INPROGRESS, END→COMPLETED
+     * OVERDUE returns to TODO (START)
+     */
+    private function syncTaskStatusToEnum(?string $taskStatusId, ?string $fallbackStatus): string
+    {
+        if (!$taskStatusId) {
+            return $fallbackStatus ?? TaskStatusEnum::TODO->value;
+        }
+
+        $taskStatus = TaskStatus::find($taskStatusId);
+        if (!$taskStatus) {
+            return $fallbackStatus ?? TaskStatusEnum::TODO->value;
+        }
+
+        return match ($taskStatus->system_type) {
+            TaskStatusSystemType::START => TaskStatusEnum::TODO->value,
+            TaskStatusSystemType::MIDDLE => TaskStatusEnum::INPROGRESS->value,
+            TaskStatusSystemType::END => TaskStatusEnum::COMPLETED->value,
+            default => TaskStatusEnum::TODO->value, // null system_type defaults to TODO
+        };
     }
 }

@@ -6,8 +6,10 @@ namespace App\Actions\Task;
 
 use App\Actions\Assignee\CreateAssigneeAction;
 use App\DataTransferObjects\Task\TaskData;
-use App\Helpers\TaskStatusSyncHelper;
+use App\Enums\TaskStatus as TaskStatusEnum;
+use App\Enums\TaskStatusSystemType;
 use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\User;
 use GraphQL\Error\Error;
 use Illuminate\Support\Facades\Auth;
@@ -25,12 +27,15 @@ final class UpdateTaskAction
         $authId = Auth::id();
 
         return DB::transaction(function () use ($task, $data, $authId) {
+            // Sync task_status_id to status enum (one-directional)
+            $status = $this->syncTaskStatusToEnum($data->task_status_id, $task->status->value);
+            
             $updateData = [
                 'title' => $data->title,
                 'description' => $data->description,
                 'category_id' => $data->category_id,
                 'organization_id' => $data->organization_id,
-                'status' => $data->status,
+                'status' => $status,
                 'parent_id' => $data->parent_id,
                 'due_date' => $data->due_date,
                 'start_date' => $data->start_date,
@@ -45,41 +50,12 @@ final class UpdateTaskAction
                 $updateData['priority'] = $data->priority;
             }
 
-            if (isset($data->status)) {
-                $updateData['status'] = $data->status;
-            }
-
             if (isset($data->assignees)) {
                 $task->assignees()->delete();
                 $this->assignTask(task: $task, data: $data);
             }
 
-            // Check if status fields are changing
-            $statusChanged =
-                isset($data->status) && $task->status !== $data->status;
-            $taskStatusIdChanged =
-                isset($data->task_status_id) &&
-                $task->task_status_id !== $data->task_status_id;
-
             $task->update($updateData);
-
-            // Sync status fields after update
-            if ($taskStatusIdChanged && isset($data->task_status_id)) {
-                // Custom status changed, sync enum status
-                \Log::info(
-                    'Syncing enum to custom status from UpdateTaskAction due to task_status_id change'
-                );
-                TaskStatusSyncHelper::syncCustomStatusToEnum($task->refresh());
-            } elseif ($statusChanged && isset($data->status)) {
-                // Enum status changed, sync custom status
-                \Log::info(
-                    'Syncing custom status to enum from UpdateTaskAction due to status change'
-                );
-                TaskStatusSyncHelper::syncEnumToCustomStatus(
-                    $task->refresh(),
-                    $task->entity_id
-                );
-            }
 
             if (isset($data->dependency_task_ids)) {
                 $this->validateAndSyncDependencies(
@@ -192,5 +168,30 @@ final class UpdateTaskAction
         }
 
         return false;
+    }
+
+    /**
+     * Sync task_status_id to legacy status enum based on system_type.
+     * Maps: START→TODO, MIDDLE→INPROGRESS, END→COMPLETED
+     * OVERDUE returns to TODO (START)
+     */
+    private function syncTaskStatusToEnum(?string $taskStatusId, string $fallbackStatus): string
+    {
+        if (!$taskStatusId) {
+            // Keep existing status if no task_status_id provided
+            return $fallbackStatus;
+        }
+
+        $taskStatus = TaskStatus::find($taskStatusId);
+        if (!$taskStatus) {
+            return $fallbackStatus;
+        }
+
+        return match ($taskStatus->system_type) {
+            TaskStatusSystemType::START => TaskStatusEnum::TODO->value,
+            TaskStatusSystemType::MIDDLE => TaskStatusEnum::INPROGRESS->value,
+            TaskStatusSystemType::END => TaskStatusEnum::COMPLETED->value,
+            default => TaskStatusEnum::TODO->value, // null system_type defaults to TODO
+        };
     }
 }

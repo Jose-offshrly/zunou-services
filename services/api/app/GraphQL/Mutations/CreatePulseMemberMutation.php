@@ -12,34 +12,63 @@ use Illuminate\Support\Facades\Validator;
 class CreatePulseMemberMutation
 {
     /**
-     * Creates a new member for a Pulse.
-     *
-     * @param  null  $_
-     *
-     * @throws \Exception
+     * @param $_
+     * @param  array  $args
+     * @return array
+     * @throws Error
+     * @throws \Throwable
      */
     public function __invoke($_, array $args): array
     {
         $pulse = Pulse::findOrFail($args['pulseId']);
 
         try {
-            return DB::transaction(function () use ($args) {
-                $pulseMembers = [];
+            return DB::transaction(function () use ($args, $pulse) {
+                // Filter out empty inputs first
+                $validInputs = array_filter($args['input'], fn ($user) => ! empty($user));
 
-                foreach ($args['input'] as $user) {
-                    if (! empty($user)) {
-                        $this->validateInput($user, $args['pulseId']);
-
-                        $pulseMember = $this->createPulseMember(
-                            $user,
-                            $args['pulseId'],
-                        );
-
-                        $pulseMembers[] = $pulseMember;
-                    }
+                if (empty($validInputs)) {
+                    return [];
                 }
 
-                return $pulseMembers;
+                // Validate all inputs upfront
+                foreach ($validInputs as $user) {
+                    $this->validateInput($user, $args['pulseId']);
+                }
+
+                // Bulk increment order for all affected pulse members once
+                $userIds = array_column($validInputs, 'userId');
+                PulseMember::whereIn('user_id', $userIds)
+                    ->whereHas('pulse', function ($query) use ($pulse) {
+                        $query
+                            ->where('category', $pulse->category)
+                            ->where('organization_id', $pulse->organization_id);
+                    })
+                    ->increment('order');
+
+                // Create all pulse members
+                $pulseMemberIds = [];
+                foreach ($validInputs as $user) {
+                    $pulseMember = PulseMember::firstOrCreate(
+                        [
+                            'pulse_id' => $pulse->id,
+                            'user_id'  => $user['userId'],
+                        ],
+                        [
+                            'pulse_id' => $pulse->id,
+                            'user_id'  => $user['userId'],
+                            'role'     => PulseMemberRole::from($user['role']),
+                            'order'    => 1,
+                        ],
+                    );
+                    $pulseMemberIds[] = $pulseMember->id;
+                }
+
+                // Eager load all relationships in a single query
+                return PulseMember::whereIn('id', $pulseMemberIds)
+                    ->with(['pulse', 'user', 'organizationUser'])
+                    ->get()
+                    ->all();
             });
         } catch (\Exception $e) {
             throw new Error(
@@ -48,6 +77,12 @@ class CreatePulseMemberMutation
         }
     }
 
+    /**
+     * @param  array  $input
+     * @param  string  $pulseId
+     * @return void
+     * @throws Error
+     */
     private function validateInput(array $input, string $pulseId): void
     {
         $inputs = array_merge($input, ['pulseId' => $pulseId]);
@@ -63,38 +98,4 @@ class CreatePulseMemberMutation
         }
     }
 
-    private function createPulseMember(
-        array $input,
-        string $pulseId,
-    ): PulseMember {
-        $pulse          = Pulse::findOrFail($pulseId);
-        $category       = $pulse->category;
-        $organizationId = $pulse->organization_id;
-        // get pulse
-        PulseMember::where('user_id', $input['userId'])
-            ->whereHas('pulse', function ($query) use (
-                $category,
-                $organizationId
-            ) {
-                $query
-                    ->where('category', $category)
-                    ->where('organization_id', $organizationId);
-            })
-            ->increment('order');
-
-        $pulseMember = PulseMember::firstOrCreate(
-            [
-                'pulse_id' => $pulseId,
-                'user_id'  => $input['userId'],
-            ],
-            [
-                'pulse_id' => $pulseId,
-                'user_id'  => $input['userId'],
-                'role'     => PulseMemberRole::from($input['role']),
-                'order'    => 1,
-            ],
-        );
-
-        return $pulseMember->refresh()->load(['pulse', 'user', 'organizationUser']);
-    }
 }

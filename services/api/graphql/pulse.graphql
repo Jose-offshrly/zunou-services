@@ -52,19 +52,12 @@ input UpdatePulseInput {
     pulseId: String!
     "icon of the pulse."
     icon: PulseType
-    "Status option of the pulse."
-    status_option: PulseStatusOption
 }
 
 enum PulseCategory @enum(class: "App\\Enums\\PulseCategory") {
     ONETOONE
     PERSONAL
     TEAM
-}
-
-enum PulseStatusOption @enum(class: "App\\Enums\\PulseStatusOption") {
-    DEFAULT
-    CUSTOM
 }
 
 "Enum representing different types of pulses."
@@ -111,7 +104,6 @@ type Pulse {
     hasGuest: Boolean @cache(maxAge: 120, private: true)
     team_thread: TeamThread @hasOne
     category: PulseCategory @cache(maxAge: 600, private: true)
-    status_option: PulseStatusOption
 }
 
 type MasterPulse {

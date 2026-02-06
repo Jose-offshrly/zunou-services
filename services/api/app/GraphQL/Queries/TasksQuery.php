@@ -116,6 +116,12 @@ readonly class TasksQuery
                 true,
                 $args['excludeWithChildren'] ?? false
             )
+            ->filterByTaskStatus($args['taskStatusId'] ?? null)
+            ->filterByTaskStatus(
+                $args['excludeTaskStatusId'] ?? null,
+                true,
+                $args['excludeWithChildren'] ?? false
+            )
             ->filterByAssignee($args['assigneeId'] ?? null)
             ->filterByAssignee(
                 $args['excludeAssigneeId'] ?? null,

@@ -218,7 +218,7 @@ class AttachGoogleMeetToEventAction
                 ],
             );
 
-            // Check if this is an organizer permission issue
+            // Check if this is an organizer permission issue - pass through as-is
             if (
                 str_contains(
                     $e->getMessage(),
@@ -228,9 +228,18 @@ class AttachGoogleMeetToEventAction
                 throw new \RuntimeException($e->getMessage());
             }
 
-            throw new \RuntimeException(
-                'Failed to add Google Meet link to existing calendar event: ' .
+            // Check if this is already a "Failed to add" error to avoid double-wrapping
+            if (
+                str_contains(
                     $e->getMessage(),
+                    'Failed to add Google Meet link',
+                )
+            ) {
+                throw new \RuntimeException($e->getMessage());
+            }
+
+            throw new \RuntimeException(
+                'Failed to add Google Meet link: ' . $e->getMessage(),
             );
         }
     }

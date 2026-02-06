@@ -1038,41 +1038,24 @@ class GoogleCalendarService
 
             // Get the current user's email for permission checking
             $currentUserEmail = $user->email;
+            $organizerEmail = $existingEvent->getOrganizer()
+                ? $existingEvent->getOrganizer()->getEmail()
+                : null;
+            $isOrganizer = $currentUserEmail && $organizerEmail && $currentUserEmail === $organizerEmail;
 
             Log::info(
-                'Event found, checking permissions and existing conference data',
+                'Event found, checking existing conference data first',
                 [
                     'event_id'            => $eventId,
                     'has_conference_data' => $existingEvent->getConferenceData() !== null,
-                    'organizer_email'     => $existingEvent->getOrganizer()
-                        ? $existingEvent->getOrganizer()->getEmail()
-                        : null,
-                    'current_user_email' => $currentUserEmail,
-                    'is_organizer'       => $currentUserEmail && $existingEvent->getOrganizer() && $currentUserEmail === $existingEvent->getOrganizer()->getEmail(),
+                    'organizer_email'     => $organizerEmail,
+                    'current_user_email'  => $currentUserEmail,
+                    'is_organizer'        => $isOrganizer,
                 ],
             );
 
-            // Check if current user is the organizer
-            if (
-                $existingEvent->getOrganizer() && $currentUserEmail && $currentUserEmail !== $existingEvent->getOrganizer()->getEmail()
-            ) {
-                Log::error(
-                    'User is not the organizer of this event, cannot add Meet link',
-                    [
-                        'event_id'        => $eventId,
-                        'organizer_email' => $existingEvent
-                            ->getOrganizer()
-                            ->getEmail(),
-                        'current_user_email' => $currentUserEmail,
-                    ],
-                );
-                throw new Error(
-                    'Only the event organizer can add Google Meet links to this event. The organizer is: '.
-                        $existingEvent->getOrganizer()->getEmail(),
-                );
-            }
-
-            // Check if it already has conference data (Meet link)
+            // IMPORTANT: Check if it already has conference data (Meet link) BEFORE checking organizer
+            // This allows us to return existing links even if user is not the organizer
             if (
                 $existingEvent->getConferenceData() && $existingEvent->getConferenceData()->getEntryPoints()
             ) {
@@ -1083,7 +1066,7 @@ class GoogleCalendarService
                     if (
                         $entryPoint->getEntryPointType() === 'video' && $entryPoint->getUri()
                     ) {
-                        Log::info('Event already has a Meet link', [
+                        Log::info('Event already has a Meet link, returning existing link', [
                             'event_id'  => $eventId,
                             'meet_link' => $entryPoint->getUri(),
                         ]);
@@ -1091,6 +1074,22 @@ class GoogleCalendarService
                         return $entryPoint->getUri();
                     }
                 }
+            }
+
+            // Only check organizer permission if we need to ADD a new Meet link
+            if (! $isOrganizer) {
+                Log::error(
+                    'User is not the organizer of this event, cannot add Meet link',
+                    [
+                        'event_id'           => $eventId,
+                        'organizer_email'    => $organizerEmail,
+                        'current_user_email' => $currentUserEmail,
+                    ],
+                );
+                throw new \Error(
+                    'Only the event organizer can add Google Meet links to this event. The organizer is: ' .
+                        ($organizerEmail ?? 'unknown'),
+                );
             }
 
             Log::info('Creating conference data objects for Meet link');

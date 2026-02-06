@@ -318,6 +318,62 @@ class Task extends BaseModel implements Assignable
         });
     }
 
+    public function scopeFilterByTaskStatus(
+        $query,
+        $taskStatusId,
+        $exclude = false,
+        $excludeWithChildren = false
+    ) {
+        return $query->when($taskStatusId, function ($q) use (
+            $taskStatusId,
+            $exclude,
+            $excludeWithChildren
+        ) {
+            if ($exclude) {
+                if ($excludeWithChildren) {
+                    $q->where(function ($subQuery) use ($taskStatusId) {
+                        $subQuery
+                            ->where(function ($q1) use ($taskStatusId) {
+                                // Parent doesn't match the excluded status (including NULL)
+                                $q1->where(
+                                    'task_status_id',
+                                    '!=',
+                                    $taskStatusId
+                                )->orWhereNull('task_status_id');
+                            })
+                            ->orWhereHas('children', function ($q2) use (
+                                $taskStatusId
+                            ) {
+                                // OR has at least one child that doesn't match
+                                $q2->where(function ($q3) use ($taskStatusId) {
+                                    $q3->where(
+                                        'task_status_id',
+                                        '!=',
+                                        $taskStatusId
+                                    )->orWhereNull('task_status_id');
+                                });
+                            });
+                    });
+                } else {
+                    // Old behavior: Only filter at parent level for exclusion (backward compatible)
+                    // Include NULL task_status_id when excluding
+                    $q->where(function ($subQuery) use ($taskStatusId) {
+                        $subQuery
+                            ->where('task_status_id', '!=', $taskStatusId)
+                            ->orWhereNull('task_status_id');
+                    });
+                }
+            } else {
+                // Include children check for positive filtering
+                $q->where('task_status_id', $taskStatusId)->orWhereHas('children', function (
+                    $q2
+                ) use ($taskStatusId) {
+                    $q2->where('task_status_id', $taskStatusId);
+                });
+            }
+        });
+    }
+
     public function scopeFilterByAssignee(
         $query,
         $assigneeId,
@@ -331,8 +387,6 @@ class Task extends BaseModel implements Assignable
         ) {
             if ($exclude) {
                 if ($excludeWithChildren) {
-                    // New behavior: Include parent if it's not assigned OR any child is not assigned
-                    // Exclude parent only if it's assigned AND all children are assigned
                     $q->where(function ($subQuery) use ($assigneeId) {
                         $subQuery
                             ->whereDoesntHave('assignees', function ($q1) use (

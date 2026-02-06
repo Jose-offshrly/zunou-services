@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Mutations;
 
+use App\Enums\TaskStatusSystemType;
 use App\Models\TaskStatus;
 use GraphQL\Error\Error;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,11 @@ readonly class UpdatePulseTaskStatusMutation
             $taskStatus = TaskStatus::find($args['id']);
             if (! $taskStatus) {
                 throw new Error('Task status not found!');
+            }
+
+            // Prevent modifying system statuses (START/END)
+            if (in_array($taskStatus->system_type, [TaskStatusSystemType::START, TaskStatusSystemType::END])) {
+                throw new Error('Cannot modify system statuses (START/END).');
             }
 
             $updateData = [];

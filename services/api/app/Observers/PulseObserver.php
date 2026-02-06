@@ -2,9 +2,6 @@
 
 namespace App\Observers;
 
-use App\Enums\PulseStatusOption;
-use App\Jobs\MigrateTasksToCustomStatusesJob;
-use App\Jobs\MigrateTasksToDefaultStatusesJob;
 use App\Models\Pulse;
 use App\Models\TaskPhase;
 use App\Models\TaskStatus;
@@ -29,42 +26,6 @@ class PulseObserver implements ShouldHandleEventsAfterCommit
     public function updated(Pulse $pulse): void
     {
         Log::info("Pulse #{$pulse->id}: updated pulse");
-
-        // Check if status_option changed from DEFAULT to CUSTOM
-        if (
-            $pulse->wasChanged('status_option') &&
-            $pulse->status_option->value === 'custom'
-        ) {
-            Log::info(
-                'PulseObserver: status_option changed from DEFAULT to CUSTOM',
-                [
-                    'pulse_id' => $pulse->id,
-                    'original' => $pulse->getOriginal('status_option'),
-                    'current' =>
-                        $pulse->status_option?->value ?? $pulse->status_option,
-                ]
-            );
-
-            MigrateTasksToCustomStatusesJob::dispatch($pulse->id);
-        }
-
-        // Check if status_option changed from CUSTOM to DEFAULT
-        if (
-            $pulse->wasChanged('status_option') &&
-            $pulse->status_option->value === 'default'
-        ) {
-            Log::info(
-                'PulseObserver: status_option changed from CUSTOM to DEFAULT',
-                [
-                    'pulse_id' => $pulse->id,
-                    'original' => $pulse->getOriginal('status_option'),
-                    'current' =>
-                        $pulse->status_option?->value ?? $pulse->status_option,
-                ]
-            );
-
-            MigrateTasksToDefaultStatusesJob::dispatch($pulse->id);
-        }
 
         $this->clearPulseCaches($pulse);
     }
@@ -108,8 +69,8 @@ class PulseObserver implements ShouldHandleEventsAfterCommit
         foreach ($defaultPhases as $phase) {
             TaskPhase::create([
                 'pulse_id' => $pulse->id,
-                'label' => $phase['label'],
-                'color' => $phase['color'],
+                'label'    => $phase['label'],
+                'color'    => $phase['color'],
             ]);
         }
     }
@@ -117,29 +78,19 @@ class PulseObserver implements ShouldHandleEventsAfterCommit
     private function createDefaultTaskStatuses(Pulse $pulse): void
     {
         $defaultStatuses = [
-            ['label' => 'Planning', 'color' => '#8B5CF6'],
-            ['label' => 'Design', 'color' => '#EC4899'],
-            ['label' => 'Development', 'color' => '#3B82F6'],
-            ['label' => 'Testing', 'color' => '#F59E0B'],
-            ['label' => 'Deployment', 'color' => '#10B981'],
-            ['label' => 'Maintenance', 'color' => '#6B7280'],
+            ['system_type' => 'start', 'label' => 'Open', 'color' => '#8B5CF6', 'position' => 0],
+            ['system_type' => 'middle', 'label' => 'In Progress', 'color' => '#3B82F6', 'position' => 1],
+            ['system_type' => 'end', 'label' => 'Closed', 'color' => '#6B7280', 'position' => 2],
         ];
 
-        // Determine current max position for this pulse (only custom statuses)
-        $maxPosition =
-            TaskStatus::where('pulse_id', $pulse->id)
-                ->whereNull('type')
-                ->max('position') ?? 0;
-
         foreach ($defaultStatuses as $status) {
-            $maxPosition++;
-
             TaskStatus::create([
                 'pulse_id' => $pulse->id,
-                'label' => $status['label'],
-                'color' => $status['color'],
-                'position' => $maxPosition,
+                'label'    => $status['label'],
+                'color'    => $status['color'],
+                'system_type' => $status['system_type'],
             ]);
         }
     }
+
 }

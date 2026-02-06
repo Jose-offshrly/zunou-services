@@ -2,7 +2,6 @@
 
 namespace App\Observers;
 
-use App\Helpers\TaskStatusSyncHelper;
 use App\Jobs\RecordTaskCreatedActivityJob;
 use App\Jobs\RecordTaskUpdatedActivityJob;
 use App\Models\Task;
@@ -22,12 +21,11 @@ class TaskObserver implements ShouldHandleEventsAfterCommit
             Log::info('Auth:', $user);
             Log::info('RecordTaskCreatedActivityJob');
             dispatch(
-                new RecordTaskCreatedActivityJob(task: $task, user: $user)
+                new RecordTaskCreatedActivityJob(task: $task, user: $user),
             );
         }
 
-        $maxOrder =
-            Task::where('parent_id', $task->parent_id)->max('order') ?? 0;
+        $maxOrder    = Task::where('parent_id', $task->parent_id)->max('order') ?? 0;
         $task->order = $maxOrder + 1;
 
         $task->saveQuietly();
@@ -46,29 +44,26 @@ class TaskObserver implements ShouldHandleEventsAfterCommit
                 new RecordTaskUpdatedActivityJob(
                     task: $task,
                     user: $user,
-                    changes: $changes
-                )
+                    changes: $changes,
+                ),
             );
         }
 
         // If this task was just marked as COMPLETED and it has a parent
         if (
-            $task->isDirty('status') &&
-            $task->status === 'COMPLETED' &&
-            $task->parent_id
+            $task->isDirty('status') && $task->status === 'COMPLETED' && $task->parent_id
         ) {
             $parent = $task->parent;
 
             // Count total children and completed ones
-            $total = $parent->children()->count();
+            $total     = $parent->children()->count();
             $completed = $parent
                 ->children()
                 ->where('status', 'COMPLETED')
                 ->count();
 
             if ($total > 0 && $total === $completed) {
-                // Mark parent as completed and sync both status fields
-                TaskStatusSyncHelper::markTaskAsCompleted($parent);
+                $parent->update(['status' => 'COMPLETED']);
             }
         }
     }

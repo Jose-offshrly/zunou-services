@@ -62,6 +62,8 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
             $timeMin          = $args['input']['timeMin']          ?? null;
             $timeMax          = $args['input']['timeMax']          ?? null;
 
+            Log::info('PULSE SINGLE:'. $pulseId);
+
             if (! $organizationId) {
                 throw new \Exception('Organization ID is required');
             }
@@ -217,7 +219,7 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
             ->whereNotNull('google_event_id')
             ->exists();
 
-        if ($hasExistingEvents) {
+        if ($hasExistingEvents && $this->args['input']['pulseId'] === null) {
             $syncToken = $user->google_calendar_sync_token;
             Log::info('Using sync token for incremental delta sync', [
                 'user_id'        => $user->id,
@@ -373,30 +375,7 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
             'count'   => count($cancelledEventIds),
         ]);
 
-        foreach ($pulses as $targetPulse) {
-            $existingCancelledEvents = Event::where('user_id', $user->id)
-                ->where('pulse_id', $targetPulse->id)
-                ->whereIn('google_event_id', $cancelledEventIds)
-                ->get();
-
-            if ($existingCancelledEvents->isEmpty()) {
-                continue;
-            }
-
-            $eventIdsToDelete = $existingCancelledEvents->pluck('id')->toArray();
-            $googleEventIds   = $existingCancelledEvents->pluck('google_event_id')->toArray();
-
-            // Bulk delete
-            $deleted = Event::whereIn('id', $eventIdsToDelete)->delete();
-            $deletedCount += $deleted;
-
-            Log::debug('Bulk deleted cancelled events from pulse', [
-                'user_id'          => $user->id,
-                'pulse_id'         => $targetPulse->id,
-                'deleted_count'    => $deleted,
-                'google_event_ids' => $googleEventIds,
-            ]);
-        }
+        $deletedCount = $this->getDeleted($pulses, $user, $cancelledEventIds, $deletedCount);
 
         return $deletedCount;
     }
@@ -419,31 +398,26 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
             'count'     => $activeEvents->count(),
         ]);
 
-        // Pre-fetch all existing events to avoid N+1 queries
-        $googleEventIds = $activeEvents->pluck('id')->toArray();
-        $pulseIds       = $pulses->pluck('id')->toArray();
-
-        // Also collect base event IDs for recurring event conversion check
-        $baseEventIds = collect($googleEventIds)
-            ->filter(fn ($id) => str_contains($id, '_'))
-            ->map(fn ($id) => $this->extractBaseEventId($id))
-            ->unique()
-            ->toArray();
-
-        $allEventIdsToFetch = array_unique(array_merge($googleEventIds, $baseEventIds));
-
-        $existingEventsMap = Event::where('user_id', $user->id)
-            ->whereIn('pulse_id', $pulseIds)
-            ->whereIn('google_event_id', $allEventIdsToFetch)
-            ->get()
-            ->groupBy(fn ($event) => "{$event->pulse_id}:{$event->google_event_id}");
+        // Collect newly created events for batch processing
+        $newlyCreatedEvents = [];
 
         foreach ($pulses as $targetPulse) {
             foreach ($activeEvents as $event) {
                 try {
-                    $result = $this->syncEvent($user, $targetPulse, $event, $existingEventsMap);
+                    $result = $this->syncEvent($user, $targetPulse, $event);
                     $counts['created'] += $result['created'];
                     $counts['updated'] += $result['updated'];
+
+                    // Collect newly created events for batch setup
+                    if ($result['created'] > 0 && isset($result['syncedEvent'])) {
+                        $newlyCreatedEvents[] = [
+                            'syncedEvent'    => $result['syncedEvent'],
+                            'pulse'          => $targetPulse,
+                            'event'          => $event,
+                            'eventStartTime' => $result['eventStartTime'],
+                            'eventEndTime'   => $result['eventEndTime'],
+                        ];
+                    }
                 } catch (\Exception $e) {
                     Log::error(
                         'Failed to process event from Google Calendar delta sync',
@@ -459,18 +433,19 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
             }
         }
 
+        // Batch process newly created events
+        if (! empty($newlyCreatedEvents)) {
+            $this->batchSetupNewEvents($user, $newlyCreatedEvents);
+        }
+
         return $counts;
     }
 
     /**
      * Sync a single event (create or update).
-     *
-     * @param User $user The user syncing events
-     * @param Pulse $pulse The pulse to sync events to
-     * @param array $event The Google Calendar event data
-     * @param Collection $existingEventsMap Pre-fetched map of existing events keyed by "pulse_id:google_event_id"
+     * Returns data for batch processing of newly created events.
      */
-    private function syncEvent(User $user, Pulse $pulse, array $event, Collection $existingEventsMap): array
+    private function syncEvent(User $user, Pulse $pulse, array $event): array
     {
         $eventStartTime = Carbon::parse(
             $event['start']['dateTime'],
@@ -486,70 +461,44 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
         // Handle edge case: if a single event was updated to a recurring event,
         // the google_event_id changes from "abc123" to "abc123_20260121T053000Z".
         // We need to update the existing event's google_event_id to prevent duplicates.
-        $this->handleSingleToRecurringEventConversion(
-            $user,
-            $pulse,
-            $googleEventId,
-            $eventStartTime,
-            $existingEventsMap,
-        );
+        $this->handleSingleToRecurringEventConversion($user, $pulse, $googleEventId, $eventStartTime);
 
-        // Check if event already exists using pre-fetched map
-        $mapKey        = "{$pulse->id}:{$googleEventId}";
-        $existingEvent = $existingEventsMap->get($mapKey)?->first();
-
-        $eventData = [
-            'name'        => $event['summary'],
-            'date'        => $eventStartTime,
-            'start_at'    => $eventStartTime,
-            'end_at'      => $eventEndTime,
-            'link'        => $this->getGoogleMeetUrl($event),
-            'location'    => $this->determineEventLocation($event),
-            'description' => $event['description'] ?? null,
-            'summary'     => $event['description'] ?? null,
-            'guests'      => collect($event['attendees'] ?? [])
-                ->pluck('email')
-                ->toArray(),
-            'organization_id' => $pulse->organization_id,
-        ];
-
-        if ($existingEvent) {
-            // Update existing event
-            $existingEvent->update($eventData);
-            $syncedEvent     = $existingEvent;
-            $wasNewlyCreated = false;
-        } else {
-            // Create new event
-            $syncedEvent = Event::create(array_merge($eventData, [
+        // Use updateOrCreate to handle both create and update in one call
+        $syncedEvent = Event::updateOrCreate(
+            [
                 'user_id'         => $user->id,
                 'pulse_id'        => $pulse->id,
                 'google_event_id' => $googleEventId,
-            ]));
-            $wasNewlyCreated = true;
+            ],
+            [
+                'name'        => $event['summary'],
+                'date'        => $eventStartTime,
+                'start_at'    => $eventStartTime,
+                'end_at'      => $eventEndTime,
+                'link'        => $this->getGoogleMeetUrl($event),
+                'location'    => $this->determineEventLocation($event),
+                'description' => $event['description'] ?? null,
+                'summary'     => $event['description'] ?? null,
+                'guests'      => collect($event['attendees'] ?? [])
+                    ->pluck('email')
+                    ->toArray(),
+                'organization_id' => $pulse->organization_id,
+            ],
+        );
 
-            // Add to map for subsequent iterations within the same batch
-            $existingEventsMap->put($mapKey, collect([$syncedEvent]));
-        }
-
-        Log::info('Event synced (created or updated)', [
-            'user_id'           => $user->id,
-            'pulse_id'          => $pulse->id,
-            'google_event_id'   => $googleEventId,
-            'event_id'          => $syncedEvent->id,
-            'was_newly_created' => $wasNewlyCreated,
-        ]);
+        $wasNewlyCreated = $syncedEvent->wasRecentlyCreated;
 
         if ($wasNewlyCreated) {
-            $this->setupNewEvent(
-                $user,
-                $pulse,
-                $event,
-                $eventStartTime,
-                $eventEndTime,
-            );
             $this->logEventCreated($user, $pulse, $event);
 
-            return ['created' => 1, 'updated' => 0];
+            // Return data for batch processing instead of processing immediately
+            return [
+                'created'        => 1,
+                'updated'        => 0,
+                'syncedEvent'    => $syncedEvent,
+                'eventStartTime' => $eventStartTime,
+                'eventEndTime'   => $eventEndTime,
+            ];
         }
 
         $this->updateEventSource($syncedEvent, $event, $eventStartTime);
@@ -559,7 +508,52 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
     }
 
     /**
-     * Set up event source, owner, and instance for newly created events.
+     * Batch setup for newly created events to reduce database strain.
+     * Processes event sources, owners, and instances in chunks.
+     */
+    private function batchSetupNewEvents(User $user, array $newlyCreatedEvents): void
+    {
+        if (empty($newlyCreatedEvents)) {
+            return;
+        }
+
+        Log::info('Batch processing newly created events', [
+            'user_id' => $user->id,
+            'count'   => count($newlyCreatedEvents),
+        ]);
+
+        // Process in chunks to avoid memory issues with large batches
+        $chunks = array_chunk($newlyCreatedEvents, 50);
+
+        foreach ($chunks as $chunk) {
+            foreach ($chunk as $eventData) {
+                try {
+                    $this->setupNewEvent(
+                        $user,
+                        $eventData['pulse'],
+                        $eventData['event'],
+                        $eventData['eventStartTime'],
+                        $eventData['eventEndTime'],
+                    );
+                } catch (\Exception $e) {
+                    Log::error('Failed to setup new event in batch', [
+                        'user_id'         => $user->id,
+                        'event_id'        => $eventData['syncedEvent']->id ?? null,
+                        'google_event_id' => $eventData['event']['id']     ?? null,
+                        'error'           => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        Log::info('Completed batch processing of newly created events', [
+            'user_id' => $user->id,
+            'count'   => count($newlyCreatedEvents),
+        ]);
+    }
+
+    /**
+     * Set up event source, owner, and instance for a newly created event.
      */
     private function setupNewEvent(
         User $user,
@@ -641,9 +635,9 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
     }
 
     /**
-     * Reconcile orphaned events: delete events from DB that no longer exist on Google Calendar.
-     * Fetches events from Google Calendar and matches with database events in the same date range.
-     * Events that don't match are orphaned and should be deleted.
+     * @param  User  $user
+     * @param  Collection  $pulses
+     * @return int
      */
     private function reconcileCurrentMonthEvents(
         User $user,
@@ -667,52 +661,32 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
             $params = [
                 'showDeleted' => true,
                 'maxResults'  => 2500,
-                'timeMin'     => $timeStart->format('c'),
-                'timeMax'     => $timeEnd->format('c'),
+                'timeMin'     => $timeStart->format('Y-m-d'),
+                'timeMax'     => $timeEnd->format('Y-m-d'),
             ];
 
-            $results = $this->googleCalendarService
-                ->getService()
-                ->events->listEvents('primary', $params);
+            $results = $this->googleCalendarService->listEvents($params);
 
             // Filter to only cancelled events
-            $cancelledEvents = collect($results->getItems())
-                ->filter(fn ($event) => $event->getStatus() === 'cancelled');
+            $cancelledEvents = collect($results['items'] ?? [])
+                ->filter(fn ($event) => ($event['status'] ?? '') === 'cancelled');
+
+            Log::info('Cancelled events filtered from Google Calendar response', [
+                'user_id'                => $user->id,
+                'total_events_fetched'   => count($results['items'] ?? []),
+                'cancelled_events_count' => $cancelledEvents->count(),
+                'cancelled_events'       => $cancelledEvents->map(fn ($event) => [
+                    'id'      => $event['id']                ?? null,
+                    'summary' => $event['summary']           ?? 'No Title',
+                    'status'  => $event['status']            ?? null,
+                    'start'   => $event['start']['dateTime'] ?? $event['start']['date'] ?? null,
+                    'end'     => $event['end']['dateTime']   ?? $event['end']['date'] ?? null,
+                ])->values()->toArray(),
+            ]);
 
             $cancelledEventIds = $cancelledEvents
-                ->map(fn ($event) => $event->getId())
+                ->pluck('id')
                 ->toArray();
-
-            // Log cancelled events details
-            $eventsDetails = $cancelledEvents
-                ->map(function ($event) {
-                    $start = $event->getStart();
-                    $end   = $event->getEnd();
-
-                    return [
-                        'id'     => $event->getId(),
-                        'name'   => $event->getSummary() ?? 'No Title',
-                        'status' => $event->getStatus(),
-                        'start'  => $start
-                            ? $start->getDateTime() ?? $start->getDate()
-                            : null,
-                        'end' => $end
-                            ? $end->getDateTime() ?? $end->getDate()
-                            : null,
-                    ];
-                })
-                ->toArray();
-
-            Log::info(
-                'Fetched cancelled events from Google Calendar for reconciliation',
-                [
-                    'user_id'                 => $user->id,
-                    'time_start'              => $timeStart->toIso8601String(),
-                    'time_end'                => $timeEnd->toIso8601String(),
-                    'cancelled_events_count'  => count($cancelledEventIds),
-                    'events'                  => $eventsDetails,
-                ],
-            );
 
             // Skip if no cancelled events
             if (empty($cancelledEventIds)) {
@@ -723,52 +697,7 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
                 return $deletedCount;
             }
 
-            foreach ($pulses as $targetPulse) {
-                // Find DB events that match cancelled Google event IDs
-                $eventsToDelete = Event::where('user_id', $user->id)
-                    ->where('pulse_id', $targetPulse->id)
-                    ->whereNotNull('google_event_id')
-                    ->whereIn('google_event_id', $cancelledEventIds)
-                    ->whereBetween('start_at', [$timeStart, $timeEnd])
-                    ->get();
-
-                // Also find related recurring events by base ID
-                $baseEventIds = collect($cancelledEventIds)
-                    ->map(fn ($id) => $this->extractBaseEventId($id))
-                    ->unique()
-                    ->toArray();
-
-                $relatedEvents = Event::where('user_id', $user->id)
-                    ->where('pulse_id', $targetPulse->id)
-                    ->whereNotNull('google_event_id')
-                    ->whereBetween('start_at', [$timeStart, $timeEnd])
-                    ->where(function ($query) use ($baseEventIds) {
-                        foreach ($baseEventIds as $baseId) {
-                            $query->orWhere('google_event_id', 'LIKE', $baseId . '_%');
-                        }
-                    })
-                    ->get();
-
-                // Merge and deduplicate events to delete
-                $allEventsToDelete = $eventsToDelete->merge($relatedEvents)->unique('id');
-
-                // Bulk delete all collected events for this pulse
-                if ($allEventsToDelete->isNotEmpty()) {
-                    $eventIds = $allEventsToDelete->pluck('id')->toArray();
-                    $deleted  = Event::whereIn('id', $eventIds)->delete();
-                    $deletedCount += $deleted;
-
-                    Log::debug(
-                        'Bulk deleted cancelled events from pulse',
-                        [
-                            'user_id'          => $user->id,
-                            'pulse_id'         => $targetPulse->id,
-                            'deleted_count'    => $deleted,
-                            'google_event_ids' => $allEventsToDelete->pluck('google_event_id')->toArray(),
-                        ],
-                    );
-                }
-            }
+            $deletedCount = $this->getDeleted($pulses, $user, $cancelledEventIds, $deletedCount);
 
             Log::info('Completed orphaned events reconciliation', [
                 'user_id'       => $user->id,
@@ -944,31 +873,38 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
                     continue;
                 }
 
-                // Create event in target pulse (DB will handle uniqueness via google_event_id + pulse_id)
-                $newEvent = Event::create([
-                    'user_id'         => $user->id,
-                    'pulse_id'        => $targetPulse->id,
-                    'organization_id' => $targetPulse->organization_id,
-                    'event_source_id' => $eventSource->id,
-                    'google_event_id' => $referenceEvent->google_event_id,
-                    'name'            => $referenceEvent->name,
-                    'date'            => $referenceEvent->date,
-                    'start_at'        => $referenceEvent->start_at,
-                    'end_at'          => $referenceEvent->end_at,
-                    'link'            => $referenceEvent->link,
-                    'location'        => $referenceEvent->location,
-                    'description'     => $referenceEvent->description,
-                    'summary'         => $referenceEvent->summary,
-                    'guests'          => $referenceEvent->guests,
-                ]);
+                // Use firstOrCreate to prevent duplicates
+                $newEvent = Event::firstOrCreate(
+                    [
+                        'user_id'         => $user->id,
+                        'pulse_id'        => $targetPulse->id,
+                        'google_event_id' => $referenceEvent->google_event_id,
+                    ],
+                    [
+                        'organization_id' => $targetPulse->organization_id,
+                        'event_source_id' => $eventSource->id,
+                        'name'            => $referenceEvent->name,
+                        'date'            => $referenceEvent->date,
+                        'start_at'        => $referenceEvent->start_at,
+                        'end_at'          => $referenceEvent->end_at,
+                        'link'            => $referenceEvent->link,
+                        'location'        => $referenceEvent->location,
+                        'description'     => $referenceEvent->description,
+                        'summary'         => $referenceEvent->summary,
+                        'guests'          => $referenceEvent->guests,
+                    ],
+                );
 
-                // Create event owner
-                app(CreateEventOwnerAction::class)->handle($newEvent, $user);
+                // Only set up event owner and instance if newly created
+                if ($newEvent->wasRecentlyCreated) {
+                    // Create event owner
+                    app(CreateEventOwnerAction::class)->handle($newEvent, $user);
 
-                // Create event instance
-                $this->createEventInstance($newEvent, $targetPulse, null);
+                    // Create event instance
+                    $this->createEventInstance($newEvent, $targetPulse, null);
 
-                $createdCount++;
+                    $createdCount++;
+                }
             } catch (\Exception $e) {
                 Log::error('Cross-pulse sync: Failed to sync event', [
                     'user_id'         => $user->id,
@@ -1013,14 +949,12 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
      * @param  Pulse  $pulse  The pulse where the event belongs
      * @param  string  $googleEventId  The new recurring event ID (e.g., "abc123_20260121T053000Z")
      * @param  Carbon  $eventStartTime  The start time of the event, used to match events on the same day
-     * @param  Collection  $existingEventsMap  Pre-fetched map of existing events keyed by "pulse_id:google_event_id"
      */
     private function handleSingleToRecurringEventConversion(
         User $user,
         Pulse $pulse,
         string $googleEventId,
         Carbon $eventStartTime,
-        Collection $existingEventsMap,
     ): void {
         // Only process if this is a recurring event (has underscore with timestamp)
         if (! str_contains($googleEventId, '_')) {
@@ -1030,38 +964,68 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
         // Extract the base event ID (without timestamp)
         $baseEventId = $this->extractBaseEventId($googleEventId);
 
-        // Check if there's an existing event with the base ID using pre-fetched map
-        $mapKey        = "{$pulse->id}:{$baseEventId}";
-        $existingEvent = $existingEventsMap->get($mapKey)?->first();
+        // Check if there's an existing event with the base ID
+        $dayStart = $eventStartTime->copy()->startOfDay();
+        $dayEnd   = $eventStartTime->copy()->addDay()->startOfDay();
 
-        // Verify the event is on the same day
+        $existingEvent = Event::where('user_id', $user->id)
+            ->where('pulse_id', $pulse->id)
+            ->where('google_event_id', $baseEventId)
+            ->whereBetween('start_at', [$dayStart, $dayEnd])
+            ->first();
+
+        // Verify the event is on the same day and update
         if ($existingEvent) {
-            $dayStart = $eventStartTime->copy()->startOfDay();
-            $dayEnd   = $eventStartTime->copy()->addDay()->startOfDay();
+            // Update the google_event_id to the new recurring event ID
+            $existingEvent->update(['google_event_id' => $googleEventId]);
 
-            $eventStartAt = Carbon::parse($existingEvent->start_at);
-
-            if ($eventStartAt >= $dayStart && $eventStartAt < $dayEnd) {
-                // Update the google_event_id to the new recurring event ID
-                $existingEvent->update(['google_event_id' => $googleEventId]);
-
-                // Update the map: remove old key, add new key
-                $existingEventsMap->forget($mapKey);
-                $newMapKey = "{$pulse->id}:{$googleEventId}";
-                $existingEventsMap->put($newMapKey, collect([$existingEvent]));
-
-                Log::info(
-                    'Updated single event google_event_id to recurring event format',
-                    [
-                        'user_id'             => $user->id,
-                        'pulse_id'            => $pulse->id,
-                        'event_id'            => $existingEvent->id,
-                        'old_google_event_id' => $baseEventId,
-                        'new_google_event_id' => $googleEventId,
-                        'event_date'          => $eventStartTime->toDateString(),
-                    ],
-                );
-            }
+            Log::info(
+                'Updated single event google_event_id to recurring event format',
+                [
+                    'user_id'             => $user->id,
+                    'pulse_id'            => $pulse->id,
+                    'event_id'            => $existingEvent->id,
+                    'old_google_event_id' => $baseEventId,
+                    'new_google_event_id' => $googleEventId,
+                    'event_date'          => $eventStartTime->toDateString(),
+                ],
+            );
         }
+    }
+
+    /**
+     * @param  Collection  $pulses
+     * @param  User  $user
+     * @param  array  $cancelledEventIds
+     * @param  bool|null  $deletedCount
+     * @return bool|null
+     */
+    private function getDeleted(Collection $pulses, User $user, array $cancelledEventIds, ?bool $deletedCount): ?bool
+    {
+        foreach ($pulses as $targetPulse) {
+            $existingCancelledEvents = Event::where('user_id', $user->id)
+                ->where('pulse_id', $targetPulse->id)
+                ->whereIn('google_event_id', $cancelledEventIds)
+                ->get();
+
+            if ($existingCancelledEvents->isEmpty()) {
+                continue;
+            }
+
+            $eventIdsToDelete = $existingCancelledEvents->pluck('id')->toArray();
+            $googleEventIds   = $existingCancelledEvents->pluck('google_event_id')->toArray();
+
+            // Bulk delete
+            $deleted = Event::whereIn('id', $eventIdsToDelete)->delete();
+            $deletedCount += $deleted;
+
+            Log::debug('Bulk deleted cancelled events from pulse', [
+                'user_id'          => $user->id,
+                'pulse_id'         => $targetPulse->id,
+                'deleted_count'    => $deleted,
+                'google_event_ids' => $googleEventIds,
+            ]);
+        }
+        return $deletedCount;
     }
 }

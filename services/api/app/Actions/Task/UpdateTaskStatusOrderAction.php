@@ -4,60 +4,39 @@ declare(strict_types=1);
 
 namespace App\Actions\Task;
 
-use App\Jobs\ResyncTaskStatusesOnReorderJob;
+use App\Enums\TaskStatusSystemType;
 use App\Models\TaskStatus;
+use GraphQL\Error\Error;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class UpdateTaskStatusOrderAction
 {
     public function handle(array $statuses): Collection
     {
-        $normalizedStatuses = collect($statuses)
-            ->values()
-            ->map(function ($status) {
-                return [
-                    'id' => $status['id'],
-                    'position' => $status['position'] + 1,
-                ];
-            });
-
-        $updated = DB::transaction(function () use ($normalizedStatuses) {
-            $updatedIds = [];
-
-            foreach ($normalizedStatuses as $status) {
-                $statusModel = TaskStatus::findOrFail($status['id']);
-
-                $statusModel->update([
-                    'position' => $status['position'],
-                ]);
-
-                $updatedIds[] = $status['id'];
-            }
-
-            return TaskStatus::whereIn('id', $updatedIds)->get();
+        $normalizedStatuses = collect($statuses)->map(function ($status) {
+            return [
+                'id'       => $status['id'],
+                'position' => $status['position'],
+            ];
         });
 
-        // Dispatch re-sync jobs for affected pulses (only for custom statuses)
-        $pulseIds = $updated
-            ->whereNotNull('pulse_id')
-            ->filter(fn($s) => $s->type === null)
-            ->pluck('pulse_id')
-            ->unique()
-            ->values()
-            ->all();
+        return DB::transaction(function () use ($normalizedStatuses)  {
+            // Load all statuses
+            $statusIds = $normalizedStatuses->pluck('id');
+            $statusModels = TaskStatus::whereIn('id', $statusIds)->get()->keyBy('id');
 
-        if (!empty($pulseIds)) {
-            Log::info('Dispatching ResyncTaskStatusesOnReorderJob for pulses', [
-                'pulse_ids' => $pulseIds,
-            ]);
-
-            foreach ($pulseIds as $pulseId) {
-                ResyncTaskStatusesOnReorderJob::dispatch($pulseId);
+            // Update all positions
+            foreach ($normalizedStatuses as $status) {
+                $statusModel = $statusModels->get($status['id']);
+                if ($statusModel) {
+                    $statusModel->update([
+                        'position' => $status['position'],
+                    ]);
+                }
             }
-        }
 
-        return $updated;
+            return $statusModels->values();
+        });
     }
 }

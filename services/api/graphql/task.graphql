@@ -55,7 +55,6 @@ input CreateTaskInput @validator {
     description: String
     assignees: [ID] @rulesForArray(apply: ["exists:users,id"])
     category_id: ID @rules(apply: ["min:36", "max:36", "exists:categories,id"])
-    status: TaskStatus
     priority: TaskPriority
     due_date: String
     start_date: String
@@ -78,7 +77,6 @@ input UpdateTaskInput @validator {
     assignees: [ID!]
     category_id: ID
     organization_id: ID!
-    status: TaskStatus
     priority: TaskPriority
     due_date: String
     start_date: String
@@ -176,6 +174,12 @@ input UpdateTaskPhaseInput {
     color: String @rules(apply: ["nullable", "string", "max:50"])
 }
 
+enum TaskStatusSystemType @enum(class: "App\\Enums\\TaskStatusSystemType") {
+    START
+    MIDDLE
+    END
+}
+
 "Input for creating a pulse task status"
 input CreatePulseTaskStatusInput {
     pulse_id: ID!
@@ -230,6 +234,7 @@ type TaskStatusType {
     label: String!
     color: String
     type: String
+    system_type: TaskStatusSystemType
     position: Int
     createdAt: DateTime!
     updatedAt: DateTime!

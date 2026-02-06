@@ -9,6 +9,7 @@ use App\Contracts\Taskable;
 use App\DataTransferObjects\Task\SourceData;
 use App\DataTransferObjects\Task\TaskData;
 use App\Models\Pulse;
+use App\Models\TaskStatus;
 use GraphQL\Error\Error;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -36,6 +37,11 @@ readonly class CreateTaskMutation
                 $this->validateTaskInput($task);
 
                 $entity = $this->getEntity($task);
+
+                // Validate task_status_id belongs to the pulse
+                if (isset($task['task_status_id'])) {
+                    $this->validateTaskStatusBelongsToPulse($task['task_status_id'], $entity);
+                }
 
                 $source = null;
                 if (isset($task['source'])) {
@@ -130,5 +136,20 @@ readonly class CreateTaskMutation
         };
 
         return $entity;
+    }
+
+    private function validateTaskStatusBelongsToPulse(string $taskStatusId, Taskable $entity): void
+    {
+        if (!($entity instanceof Pulse)) {
+            return; // Only validate for Pulse entities
+        }
+
+        $taskStatus = TaskStatus::where('id', $taskStatusId)
+            ->where('pulse_id', $entity->id)
+            ->first();
+
+        if (!$taskStatus) {
+            throw new Error('Task status does not belong to the specified pulse.');
+        }
     }
 }

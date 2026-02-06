@@ -133,7 +133,7 @@ EOD;
 
     public function getFunctionCalls(): array
     {
-        return $this->mergeFunctionCalls([
+        $tools = [
             [
                 'type' => 'function',
                 'function' => [
@@ -243,7 +243,18 @@ EOD;
                     ],
                 ],
             ],
-        ]);
+        ];
+
+        if ($this->allowedTools !== null && is_array($this->allowedTools)) {
+            $tools = array_values(
+                array_filter($tools, function ($item) {
+                    $fnName = $item['function']['name'];
+                    return in_array($fnName, $this->allowedTools);
+                }),
+            );
+        }
+
+        return $this->mergeFunctionCalls($tools);
     }
 
     public function handleFunctionCall(

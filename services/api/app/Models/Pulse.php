@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Contracts\Eventable;
 use App\Contracts\Taskable;
 use App\Enums\PulseCategory;
-use App\Enums\PulseStatusOption;
 use App\Observers\PulseObserver;
 use App\Traits\HasMembership;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -37,7 +36,6 @@ class Pulse extends Model implements Taskable, Eventable
     protected $casts = [
         'features' => 'array',
         'category' => PulseCategory::class,
-        'status_option' => PulseStatusOption::class,
     ];
 
     protected $fillable = [
@@ -49,7 +47,6 @@ class Pulse extends Model implements Taskable, Eventable
         'features',
         'icon',
         'category',
-        'status_option',
     ];
 
     public $incrementing = false;
