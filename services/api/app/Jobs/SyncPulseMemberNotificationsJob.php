@@ -78,8 +78,13 @@ class SyncPulseMemberNotificationsJob implements ShouldQueue
                 ];
             }
 
-            // Use insertOrIgnore to avoid duplicate key errors
-            DB::table('notifiable_notifications')->insertOrIgnore($syncData);
+            // Use upsert to handle duplicate key errors more reliably than insertOrIgnore
+            // insertOrIgnore can still throw exceptions in some MySQL configurations
+            DB::table('notifiable_notifications')->upsert(
+                $syncData,
+                ['notification_id', 'notifiable_type', 'notifiable_id'],
+                ['read_at', 'updated_at']
+            );
 
             Log::debug('SyncPulseMemberNotificationsJob: Synced notifications', [
                 'pulse_id' => $this->pulseId,
