@@ -2057,6 +2057,22 @@ type Query @guard {
         )
         @field(resolver: "App\\GraphQL\\Queries\\EventsQuery")
 
+    """
+    Get all events with meeting recordings that the current user can access.
+    Returns events where user is a member of the pulse and event has a dataSource.
+    """
+    myEventsWithRecordings(input: MyEventsWithRecordingsInput! @spread): PaginatedEvents!
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\MyEventsWithRecordingsQuery")
+
+    """
+    Get all upcoming events that the current user can access across all pulses.
+    Returns events where user is a member of the pulse, ordered by start_at ascending.
+    """
+    myUpcomingEvents(input: MyUpcomingEventsInput! @spread): PaginatedEvents!
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\MyUpcomingEventsQuery")
+
     "List notes with filters and pagination."
     paginatedNotes(input: PaginatedNotesInput! @spread): PaginatedNotes!
         @guard

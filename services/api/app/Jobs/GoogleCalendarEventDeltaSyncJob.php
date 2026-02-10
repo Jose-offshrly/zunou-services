@@ -16,7 +16,6 @@ use App\Models\Event;
 use App\Models\EventSource;
 use App\Models\Pulse;
 use App\Models\User;
-use App\Services\Calendar\TokenManager;
 use App\Traits\ExtractsGoogleMeetUrl;
 use App\Traits\ReconciliatesGoogleCalendarEvents;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -84,13 +83,28 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
                 $syncToken     = null;
                 $nextSyncToken = null;
             } else {
-                [$syncToken, $timeMin, $timeMax] = $this->getSyncParameters($user);
-                $syncResult                      = $this->fetchEventsFromGoogle(
+                [$syncToken,$showDeleted, $timeMin, $timeMax] = $this->getSyncParameters($user);
+                $syncResult                                   = $this->fetchEventsFromGoogle(
                     $user,
                     $syncToken,
+                    $showDeleted,
                     $timeMin,
                     $timeMax,
                 );
+
+                Log::info('Fetched events from Google Calendar', [
+                    'user_id'             => $user->id,
+                    'total_events'        => count($syncResult['items'] ?? []),
+                    'has_next_sync_token' => isset($syncResult['nextSyncToken']),
+                    'next_sync_token'     => $syncResult['nextSyncToken'] ?? null,
+                    'events'              => collect($syncResult['items'] ?? [])->map(fn ($event) => [
+                        'id'      => $event['id']                ?? null,
+                        'summary' => $event['summary']           ?? 'No Title',
+                        'status'  => $event['status']            ?? null,
+                        'start'   => $event['start']['dateTime'] ?? $event['start']['date'] ?? null,
+                    ])->toArray(),
+                ]);
+
                 $events        = $syncResult['items']         ?? [];
                 $nextSyncToken = $syncResult['nextSyncToken'] ?? null;
 
@@ -226,7 +240,7 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
                 'has_sync_token' => ! empty($syncToken),
             ]);
 
-            return [$syncToken, null, null];
+            return [$syncToken,false, null, null];
         }
 
         $timeMin = Carbon::now()->format('Y-m-d');
@@ -241,7 +255,7 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
             ],
         );
 
-        return [null, $timeMin, $timeMax];
+        return [null,false, $timeMin, $timeMax];
     }
 
     /**
@@ -250,6 +264,7 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
     private function fetchEventsFromGoogle(
         User $user,
         ?string $syncToken,
+        ?bool $showDeleted,
         ?string $timeMin,
         ?string $timeMax,
     ): array {
@@ -260,8 +275,9 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
         if ($syncToken) {
             $listParams['syncToken'] = $syncToken;
         } else {
-            $listParams['timeMin'] = $timeMin;
-            $listParams['timeMax'] = $timeMax;
+            $listParams['showDeleted'] = $showDeleted;
+            $listParams['timeMin']     = $timeMin;
+            $listParams['timeMax']     = $timeMax;
         }
 
         return $this->googleCalendarService->listEvents($listParams);
@@ -646,21 +662,19 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
         $deletedCount = 0;
 
         try {
-            // Refresh Google Calendar token to ensure we have latest access
-            $credentials = $user->google_calendar_credentials;
-            TokenManager::refreshGoogleToken($user, $credentials);
-
             // Reinitialize the service with fresh token
             $this->googleCalendarService = Calendar::make('google', $user);
 
             // Define time range for fetching events - current month only
-            $timeStart = Carbon::now()->startOfMonth();
-            $timeEnd   = Carbon::now()->endOfMonth();
+            $timeStart  = Carbon::now()->startOfMonth();
+            $timeEnd    = Carbon::now()->addMonths(3);
+            $updatedMin = Carbon::now();
 
             // Fetch only cancelled events from Google Calendar for the current month
             $params = [
                 'showDeleted' => true,
                 'maxResults'  => 2500,
+                'updatedMin'  => $updatedMin->format('Y-m-d'),
                 'timeMin'     => $timeStart->format('Y-m-d'),
                 'timeMax'     => $timeEnd->format('Y-m-d'),
             ];

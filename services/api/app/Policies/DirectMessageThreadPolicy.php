@@ -5,6 +5,9 @@ namespace App\Policies;
 use App\Models\DirectMessageThread;
 use App\Models\User;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system. Use TeamThreadPolicy with ONETOONE pulse category instead.
+ */
 class DirectMessageThreadPolicy extends AbstractPolicy
 {
     /**

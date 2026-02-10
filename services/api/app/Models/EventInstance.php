@@ -6,6 +6,7 @@ use App\Concerns\BelongsToEvent;
 use App\Concerns\BelongsToPulse;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -28,6 +29,14 @@ class EventInstance extends BaseModel
     public function checklists(): HasMany
     {
         return $this->hasMany(Checklist::class);
+    }
+
+    /**
+     * Get the meeting session created from this event instance.
+     */
+    public function meetingSession(): HasOne
+    {
+        return $this->hasOne(MeetingSession::class, 'event_instance_id');
     }
 
     public function getCreatedAtAttribute(): ?string

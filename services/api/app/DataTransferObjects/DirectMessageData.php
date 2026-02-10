@@ -4,6 +4,9 @@ namespace App\DataTransferObjects;
 
 use App\Support\Attributes\MapTo;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system. Use TeamMessageData instead.
+ */
 class DirectMessageData
 {
     public function __construct(

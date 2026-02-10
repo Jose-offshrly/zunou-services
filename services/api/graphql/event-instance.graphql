@@ -8,6 +8,7 @@ type EventInstance {
     updated_at: DateTime
     event: Event
     pulse: Pulse
+    meetingSession: MeetingSession @hasOne
 }
 
 input CreateEventInstanceInput {

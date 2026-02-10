@@ -9,6 +9,9 @@ use App\Models\OrganizationUser;
 use App\Models\PinnedOrganizationUser;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system.
+ */
 final readonly class DirectMessageThreadIsPinnedQuery
 {
     public function __invoke(DirectMessageThread $thread): bool

@@ -11,6 +11,9 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system. Use TeamMessageDeleted with ONETOONE pulse category instead.
+ */
 class DirectMessageDeleted implements ShouldBroadcast
 {
     use Dispatchable;

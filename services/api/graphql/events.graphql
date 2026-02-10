@@ -32,6 +32,20 @@ type Event {
     meeting: Meeting @hasOne
     actionables: [Actionable]
     summary: String
+    """
+    Get all EventInstances the current user can access that relate to this calendar event.
+    Returns instances across different Event records that share the same google_event_id,
+    filtered by the user's pulse memberships.
+    """
+    visibleEventInstances: [EventInstance!]!
+        @field(resolver: "App\\GraphQL\\Resolvers\\VisibleEventInstancesResolver")
+    """
+    Get all MeetingSessions the current user can access for this calendar event.
+    Returns recordings across different Event records that share the same google_event_id,
+    enabling users to see recordings from team channels or other users' event copies.
+    """
+    visibleMeetingSessions: [MeetingSession!]!
+        @field(resolver: "App\\GraphQL\\Resolvers\\VisibleMeetingSessionsResolver")
 }
 
 type PaginatedEvents {
@@ -145,4 +159,28 @@ input AttachMeetingSessionToEventInput {
 input GenerateEventBreakMessageInput {
     previousEventId: ID!
     nextEventId: ID!
+}
+
+input MyEventsWithRecordingsInput {
+    organizationId: ID! @rules(apply: ["required", "exists:organizations,id"])
+    "Filter to events after this date (inclusive)"
+    from: DateTime
+    "Filter to events before this date (exclusive)"
+    to: DateTime
+    "Search by event name"
+    search: String
+    page: Int = 1
+    perPage: Int = 20
+}
+
+input MyUpcomingEventsInput {
+    organizationId: ID! @rules(apply: ["required", "exists:organizations,id"])
+    "Filter to events after this date (inclusive). Defaults to now if not provided."
+    from: DateTime
+    "Filter to events before this date (exclusive)"
+    to: DateTime
+    "Search by event name"
+    search: String
+    page: Int = 1
+    perPage: Int = 20
 }

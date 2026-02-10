@@ -4,6 +4,9 @@ namespace App\GraphQL\Queries;
 
 use App\Models\DirectMessage;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system.
+ */
 final readonly class DirectMessageGroupedReactionsQuery
 {
     /** @param  array{}  $args */

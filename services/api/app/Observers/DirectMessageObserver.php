@@ -6,6 +6,9 @@ use App\Concerns\FeedHandler;
 use App\Enums\FeedType;
 use App\Models\DirectMessage;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system. Use TeamMessageObserver instead.
+ */
 class DirectMessageObserver
 {
     use FeedHandler;

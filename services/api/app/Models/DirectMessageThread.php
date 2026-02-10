@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
+/**
+ * @deprecated Use TeamThread with ONETOONE pulse category instead. This class is maintained for backward compatibility only.
+ */
 class DirectMessageThread extends Model
 {
     use BelongsToOrganization;

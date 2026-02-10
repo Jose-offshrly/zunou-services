@@ -7,6 +7,9 @@ namespace App\GraphQL\Queries;
 use App\Models\DirectMessage;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system.
+ */
 final readonly class DirectMessageReadQuery
 {
     public function __invoke(DirectMessage $directMessage): bool

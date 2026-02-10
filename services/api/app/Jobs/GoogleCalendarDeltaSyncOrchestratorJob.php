@@ -52,8 +52,24 @@ class GoogleCalendarDeltaSyncOrchestratorJob implements ShouldQueue
                 $timeMin,
                 $timeMax,
             );
-            $events        = $syncResult['items']         ?? [];
             $nextSyncToken = $syncResult['nextSyncToken'] ?? null;
+
+            // Filter events to only include those within the 3-month window
+            $filterTimeMin = Carbon::now()->startOfDay();
+            $filterTimeMax = Carbon::now()->addMonths(3)->endOfDay();
+            $events        = array_filter(
+                $syncResult['items'] ?? [],
+                function ($event) use ($filterTimeMin, $filterTimeMax) {
+                    $startDateTime = $event['start']['dateTime'] ?? null;
+                    if (! $startDateTime) {
+                        return false;
+                    }
+                    $eventStart = Carbon::parse($startDateTime);
+
+                    return $eventStart->between($filterTimeMin, $filterTimeMax);
+                },
+            );
+            Log::info('RANGE EVENTS:',$events);
 
             // Update sync token immediately after fetching (the fetch "consumes" the token)
             if ($nextSyncToken) {

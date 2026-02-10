@@ -12,6 +12,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
+/**
+ * @deprecated Use TeamMessage with ONETOONE pulse category instead. This class is maintained for backward compatibility only.
+ */
 #[ObservedBy(DirectMessageObserver::class)]
 class DirectMessage extends Model
 {
