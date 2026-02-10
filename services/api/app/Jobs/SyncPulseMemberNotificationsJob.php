@@ -53,9 +53,10 @@ class SyncPulseMemberNotificationsJob implements ShouldQueue
                 return;
             }
 
-            // Get all notification IDs for this pulse
+            // Get all notification IDs for this pulse (excluding soft-deleted)
             $notificationIds = DB::table('notifications')
                 ->where('pulse_id', $this->pulseId)
+                ->whereNull('deleted_at')
                 ->pluck('id')
                 ->toArray();
 
@@ -69,8 +70,7 @@ class SyncPulseMemberNotificationsJob implements ShouldQueue
 
             foreach ($notificationIds as $notificationId) {
                 $syncData[] = [
-                    'notifiable_type' => User::class,
-                    'notifiable_id' => $this->userId,
+                    'user_id' => $this->userId,
                     'notification_id' => $notificationId,
                     'read_at' => $now,
                     'created_at' => $now,
@@ -79,7 +79,7 @@ class SyncPulseMemberNotificationsJob implements ShouldQueue
             }
 
             // Use insertOrIgnore to avoid duplicate key errors
-            DB::table('notifiable_notifications')->insertOrIgnore($syncData);
+            DB::table('notification_user')->insertOrIgnore($syncData);
 
             Log::debug('SyncPulseMemberNotificationsJob: Synced notifications', [
                 'pulse_id' => $this->pulseId,
