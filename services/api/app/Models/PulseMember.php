@@ -36,15 +36,7 @@ class PulseMember extends BaseModel
         return $query->where('pulse_id', $pulseId);
     }
 
-    protected static function booted()
-    {
-        static::created(function ($pulseMember) {
-            SyncPulseMemberNotificationsJob::dispatch(
-                $pulseMember->pulse_id,
-                $pulseMember->user_id
-            );
-        });
-    }
+
 
     public function pulse(): BelongsTo
     {

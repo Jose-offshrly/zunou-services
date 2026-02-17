@@ -22,6 +22,7 @@ class PulseMemberObserver implements ShouldHandleEventsAfterCommit
     {
         $this->clearPulseMemberCaches($pulseMember);
 
+SyncPulseMemberNotificationsJob::dispatch($pulseMember->pulse_id, $pulseMember->user_id);
         $user = Auth::user();
 
         if ($user) {
