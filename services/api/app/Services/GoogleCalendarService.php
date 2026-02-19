@@ -46,7 +46,12 @@ class GoogleCalendarService
             $this->initializeWithUser($userOrRefreshToken);
         } elseif (is_string($userOrRefreshToken) && ! empty($userOrRefreshToken)) {
             $this->refreshToken = $userOrRefreshToken;
-            $this->initializeWithRefreshToken($userOrRefreshToken);
+            // Validate refresh token before initializing
+            if ($this->validateRefreshToken()) {
+                $this->initializeWithRefreshToken($userOrRefreshToken);
+            } else {
+                Log::warning('Invalid refresh token passed to constructor, skipping initialization');
+            }
         }
     }
 
