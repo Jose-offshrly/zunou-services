@@ -104,7 +104,6 @@ class GoogleCalendarService
                 $refreshToken,
             );
 
-            // Check if the response contains an error
             if (isset($accessToken['error'])) {
                 Log::error(
                     'Error fetching access token with refresh token in constructor',
@@ -114,9 +113,8 @@ class GoogleCalendarService
                     ],
                 );
 
-                throw new \Exception(
-                    "Failed to initialize with refresh token: {$accessToken['error_description']}",
-                );
+                // Do not throw exception here, just return to allow mutation to handle
+                return;
             }
 
             $this->client->setAccessToken($accessToken);
@@ -132,7 +130,8 @@ class GoogleCalendarService
                 ],
             );
 
-            throw $e;
+            // Do not throw exception here, just return to allow mutation to handle
+            return;
         }
     }
 
