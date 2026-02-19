@@ -1384,10 +1384,12 @@ class GoogleCalendarService implements CalendarInterface
      * This method implements the robust workflow for syncing Google Calendar events.
      *
      * @param  array{
-     *     syncToken?: string|null,
-     *     timeMin?: string,
-     *     timeMax?: string,
-     *     timezone?: string
+        *     syncToken?: string|null,
+        *     timeMin?: string,
+        *     timeMax?: string,
+        *     timezone?: string,
+        *     showDeleted?: bool,
+        *     updatedMin?: string|null // e.g. "2025-01-01" or ISO8601 datetime
      * } $params
      * @return array  Array with 'items' (events with status) and 'nextSyncToken'
      */
@@ -1403,7 +1405,6 @@ class GoogleCalendarService implements CalendarInterface
             // Build base parameters
             $optParams = [
                 'singleEvents' => true,
-                'showDeleted'  => true,
                 'maxResults'   => 1000,
             ];
 
@@ -1422,10 +1423,26 @@ class GoogleCalendarService implements CalendarInterface
                     : (new \DateTime('now', new \DateTimeZone($timezone)))->modify('+3 months');
                 $timeMax->setTime(23, 59, 59);
 
+                // Use provided updatedMin if present, otherwise null (no filter)
+                $updatedMin = isset($params['updatedMin'])
+                    ? new \DateTime($params['updatedMin'], new \DateTimeZone($timezone))
+                    : null;
+
                 $optParams['timeMin']  = $timeMin->format('c');
                 $optParams['timeMax']  = $timeMax->format('c');
                 $optParams['timeZone'] = $timezone;
+                $optParams['showDeleted'] = $params['showDeleted'] ?? false;
+
+                // Only include updatedMin when provided (keep null/omitted otherwise)
+                if ($updatedMin !== null) {
+                    $optParams['updatedMin'] = $updatedMin->format('c');
+                }
             }
+
+            Log::info('Google Calendar listEvents optParams', [
+                'opt_params' => $optParams,
+                'user_id'    => $this->user->id,
+            ]);
 
             // Handle pagination
             do {

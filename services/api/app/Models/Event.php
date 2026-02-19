@@ -203,4 +203,81 @@ class Event extends BaseModel implements Participable
 
         return $combined;
     }
+
+    /**
+     * Get all EventInstances the user can access that relate to the same calendar event.
+     * This finds instances across different Event records that share the same google_event_id,
+     * filtered by the user's pulse memberships.
+     *
+     * @param  User  $user  The user to check visibility for
+     * @return \Illuminate\Support\Collection<EventInstance>
+     */
+    public function getVisibleEventInstances(User $user): \Illuminate\Support\Collection
+    {
+        // Get all pulse IDs the user is a member of
+        $userPulseIds    = $user->pulseMemberships()->pluck('pulse_id');
+        $organization_id = $this->organization_id;
+
+        // If no google_event_id, we can only return instances of this specific event
+        if (empty($this->google_event_id)) {
+            return $this->eventInstances()
+                ->whereIn('pulse_id', $userPulseIds)
+                ->with(['pulse', 'meetingSession.dataSource'])
+                ->get();
+        }
+
+        // Find all events with the same google_event_id in the same organization
+        $relatedEventIds = Event::where('google_event_id', $this->google_event_id)
+            ->where('organization_id', $organization_id)
+            ->where('user_id', $user->id)
+            ->pluck('id');
+
+        // Return all event instances across all related events where user is a pulse member
+        return EventInstance::whereIn('event_id', $relatedEventIds)
+            ->whereIn('pulse_id', $userPulseIds)
+            ->whereHas('event', function ($q) use ($organization_id, $user) {
+                $q->where('organization_id', $organization_id)
+                    ->where('user_id', $user->id);
+            })
+            ->with(['event', 'pulse', 'meetingSession.dataSource'])
+            ->get();
+    }
+
+    /**
+     * Get all MeetingSessions visible to the user for this event and related events with the same google_event_id.
+     * This finds recordings across all copies of the same calendar event.
+     *
+     * @param  User  $user  The user to check visibility for
+     * @return \Illuminate\Support\Collection<MeetingSession>
+     */
+    public function getVisibleMeetingSessions(User $user): \Illuminate\Support\Collection
+    {
+        // Get all pulse IDs the user is a member of
+        $userPulseIds = $user->pulseMemberships()->pluck('pulse_id');
+
+        // If no google_event_id, only return sessions for this specific event
+        if (empty($this->google_event_id)) {
+            return MeetingSession::where('event_id', $this->id)
+                ->where(function ($query) use ($userPulseIds, $user) {
+                    $query->whereIn('pulse_id', $userPulseIds)
+                        ->orWhere('user_id', $user->id);
+                })
+                ->with(['dataSource', 'event'])
+                ->get();
+        }
+
+        // Find all events with the same google_event_id in the same organization
+        $relatedEventIds = Event::where('google_event_id', $this->google_event_id)
+            ->where('organization_id', $this->organization_id)
+            ->pluck('id');
+
+        // Return all meeting sessions linked to any related event where user has access
+        return MeetingSession::whereIn('event_id', $relatedEventIds)
+            ->where(function ($query) use ($userPulseIds, $user) {
+                $query->whereIn('pulse_id', $userPulseIds)
+                    ->orWhere('user_id', $user->id);
+            })
+            ->with(['dataSource', 'event'])
+            ->get();
+    }
 }

@@ -7,6 +7,9 @@ namespace App\GraphQL\Queries;
 use App\Models\DirectMessageThread;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system.
+ */
 final readonly class DirectMessageUnreadCountQuery
 {
     public function __invoke(DirectMessageThread $thread): int

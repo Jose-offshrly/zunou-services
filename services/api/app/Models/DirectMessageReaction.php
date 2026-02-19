@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system. Use TeamMessageReaction instead.
+ */
 class DirectMessageReaction extends Model
 {
     use HasFactory;

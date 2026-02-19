@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use App\Facades\Beams;
 use App\Models\TeamMessage;
 use App\Models\TeamThread;
 use Illuminate\Broadcasting\Channel;
@@ -24,8 +23,6 @@ class TeamMessageSent implements ShouldBroadcast
     public function __construct(TeamMessage $teamMessage)
     {
         $this->teamMessage = $teamMessage;
-
-        $this->pushNotification();
     }
 
     public function broadcastOn(): array
@@ -75,187 +72,6 @@ class TeamMessageSent implements ShouldBroadcast
             'timestamp' => now()->toIso8601String(),
             'category' => $pulseCategory,
         ];
-    }
-
-    public function pushNotification(): string
-    {
-        try {
-            // Check if Beams is enabled
-            if (!Beams::isEnabled()) {
-                \Log::warning(
-                    'Pusher Beams is not enabled, skipping push notification'
-                );
-                return '';
-            }
-
-            // Use unified message extraction and normalization for push
-            $userName = $this->teamMessage->user->name;
-            $rawContent = $this->teamMessage->content;
-            $messageText = $this->extractMessageText($rawContent);
-
-            // For Pulse system messages, extract the `message` directly from raw content
-            if ($this->teamMessage->is_from_pulse_chat) {
-                $messageText =
-                    $this->extractPulseMessage($rawContent) ?? $messageText;
-            }
-
-            $parsedBody = Str::sanitize($messageText);
-
-            // Get all pulse members except the sender
-            // Eager load members.user to prevent N+1 when accessing pulse->name for ONETOONE pulses
-            $teamThread = $this->teamMessage->teamThread;
-
-            // Check if pulse exists
-            if (!$teamThread || !$teamThread->pulse) {
-                \Log::warning(
-                    'Team thread or pulse not found, skipping push notification',
-                    [
-                        'team_thread_id' => $this->teamMessage->team_thread_id,
-                    ]
-                );
-                return '';
-            }
-
-            // Eager load members.user if not already loaded to prevent N+1 on pulse->name
-            if (!$teamThread->pulse->relationLoaded('members')) {
-                $teamThread->pulse->load('members.user');
-            }
-
-            // Cache pulse name and other values to avoid repeated accessor calls
-            $pulse = $teamThread->pulse;
-            $pulseName = $pulse->name ?? 'Team';
-            $pulseIcon = $pulse->icon;
-            $pulseCategory = $pulse->category;
-
-            // Use preloaded members collection (without parentheses) to avoid extra query
-            $pulseMembers = $pulse->members
-                ->where('user_id', '!=', $this->teamMessage->user_id)
-                ->pluck('user_id')
-                ->toArray();
-
-            // Check if there are any recipients
-            if (empty($pulseMembers)) {
-                \Log::info(
-                    'No pulse members to notify, skipping push notification',
-                    [
-                        'team_thread_id' => $this->teamMessage->team_thread_id,
-                        'pulse_id' => $pulse->id,
-                    ]
-                );
-                return '';
-            }
-
-            // Build grouping identifiers
-            $threadGroupId = 'team-thread-' . $teamThread->id;
-            $messageTag = $threadGroupId . '-msg-' . $this->teamMessage->id;
-
-            // Build payload data structure
-            $payloadData = [
-                'message_type' => $pulseCategory ?? 'team-message',
-                'thread_id' => (string) $teamThread->id,
-                'message_id' => (string) $this->teamMessage->id,
-                'is_mention' => $this->hasMentions($this->teamMessage->content),
-                'sender' => [
-                    'id' => (string) $this->teamMessage->user_id,
-                    'name' => $userName,
-                    'gravatar' => $this->teamMessage->user->gravatar,
-                ],
-                'org' => [
-                    'id' => (string) $teamThread->organization_id,
-                    'name' => $teamThread->organization->name,
-                    'logo' => $teamThread->organization->logo,
-                ],
-                'pulse' => [
-                    'id' => (string) $teamThread->pulse_id,
-                    'name' => $pulseName,
-                    'logo' => $pulseIcon,
-                ],
-            ];
-
-            $notificationTitle = $userName . ' in ' . $pulseName;
-
-            $publishId = Beams::publishToUsers($pulseMembers, [
-                'fcm' => [
-                    'notification' => [
-                        'title' => $notificationTitle,
-                        'body' => $parsedBody,
-                        'sound' => 'default',
-                        'tag' => $messageTag,
-                    ],
-                    'android' => [
-                        'group' => $threadGroupId,
-                        'notification' => [
-                            'icon' => $pulseIcon ?? config('zunou.app.logo'),
-                            'channel_id' => 'team_messages',
-                            'priority' => 'high',
-                            'tag' => $messageTag,
-                        ],
-                    ],
-                    'data' => [
-                        'payload' => json_encode(
-                            $payloadData,
-                            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-                        ),
-                        'thread_id' => (string) $teamThread->id,
-                        'message_id' => (string) $this->teamMessage->id,
-                        'collapse_key' => $threadGroupId,
-                    ],
-                ],
-                'apns' => [
-                    'headers' => [
-                        'apns-collapse-id' => $threadGroupId,
-                    ],
-                    'aps' => [
-                        'alert' => [
-                            'title' => $notificationTitle,
-                            'body' => $parsedBody,
-                        ],
-                        'sound' => 'default',
-                        'badge' => 1,
-                        'mutable-content' => 1,
-                        'content-available' => 1,
-                        'thread-id' => $threadGroupId,
-                    ],
-                    'data' => [
-                        'payload' => json_encode(
-                            $payloadData,
-                            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-                        ),
-                    ],
-                ],
-                'web' => [
-                    'notification' => [
-                        'title' => $notificationTitle,
-                        'body' => $parsedBody,
-                        'icon' => config('zunou.app.logo'),
-                        'sound' => 'default',
-                        'tag' => $threadGroupId,
-                    ],
-                    'data' => [
-                        'payload' => json_encode(
-                            $payloadData,
-                            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-                        ),
-                    ],
-                ],
-            ]);
-
-            \Log::info('Push notification sent successfully', [
-                'publish_id' => $publishId,
-                'recipients_count' => count($pulseMembers),
-                'message_id' => $this->teamMessage->id,
-                'thread_group_id' => $threadGroupId,
-            ]);
-
-            return $publishId;
-        } catch (\Exception $e) {
-            \Log::error('Failed to send push notification', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'message_id' => $this->teamMessage->id,
-            ]);
-            return '';
-        }
     }
 
     /**

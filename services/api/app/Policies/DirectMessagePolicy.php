@@ -5,6 +5,9 @@ namespace App\Policies;
 use App\Models\DirectMessage;
 use App\Models\User;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system. Use TeamMessagePolicy instead.
+ */
 class DirectMessagePolicy extends AbstractPolicy
 {
     /**
