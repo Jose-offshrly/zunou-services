@@ -46,7 +46,8 @@ class GoogleCalendarService
             $this->initializeWithUser($userOrRefreshToken);
         } elseif (is_string($userOrRefreshToken) && ! empty($userOrRefreshToken)) {
             $this->refreshToken = $userOrRefreshToken;
-            $this->initializeWithRefreshToken($userOrRefreshToken);
+            // Do not call initializeWithRefreshToken in constructor to avoid exceptions
+            // Caller should explicitly call initializeWithRefreshToken() if needed
         }
     }
 
