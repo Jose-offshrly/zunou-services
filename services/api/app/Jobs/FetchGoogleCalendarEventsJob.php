@@ -171,6 +171,23 @@ class FetchGoogleCalendarEventsJob implements ShouldQueue
                     'error'      => $e->getMessage(),
                 ]);
 
+                // If the error is due to invalid_grant or token revoked/expired, clear the refresh token
+                $errorMessage = $e->getMessage();
+                if (
+                    str_contains($errorMessage, 'invalid_grant') ||
+                    str_contains($errorMessage, 'token has been revoked') ||
+                    str_contains($errorMessage, 'token expired') ||
+                    str_contains($errorMessage, 'Token has been expired or revoked')
+                ) {
+                    Log::warning('Clearing invalid Google Calendar refresh token for user', [
+                        'user_id'    => $user->id,
+                        'user_email' => $user->email,
+                        'error'      => $errorMessage,
+                    ]);
+                    $user->google_calendar_refresh_token = null;
+                    $user->save();
+                }
+
                 // Continue with next user instead of stopping the entire job
                 continue;
             }
