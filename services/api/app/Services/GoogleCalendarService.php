@@ -43,10 +43,8 @@ class GoogleCalendarService
         // Handle User object or refresh token string
         if ($userOrRefreshToken instanceof User) {
             $this->user = $userOrRefreshToken;
-            $this->initializeWithUser($userOrRefreshToken);
         } elseif (is_string($userOrRefreshToken) && ! empty($userOrRefreshToken)) {
             $this->refreshToken = $userOrRefreshToken;
-            $this->initializeWithRefreshToken($userOrRefreshToken);
         }
     }
 
