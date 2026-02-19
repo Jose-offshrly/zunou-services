@@ -79,7 +79,7 @@ class SyncPulseMemberNotificationsJob implements ShouldQueue
             }
 
             // Use insertOrIgnore to avoid duplicate key errors
-            DB::table('notifiable_notifications')->insertOrIgnore($syncData);
+            DB::table('notification_user')->insertOrIgnore($syncData);
 
             Log::debug('SyncPulseMemberNotificationsJob: Synced notifications', [
                 'pulse_id' => $this->pulseId,
