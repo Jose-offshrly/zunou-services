@@ -97,6 +97,13 @@ class GoogleCalendarService
     /**
      * Initialize the service with just a refresh token (legacy support)
      */
+    private bool $isValidToken = true;
+
+    public function isValid(): bool
+    {
+        return $this->isValidToken;
+    }
+
     private function initializeWithRefreshToken(string $refreshToken): void
     {
         try {
@@ -114,9 +121,9 @@ class GoogleCalendarService
                     ],
                 );
 
-                throw new \Exception(
-                    "Failed to initialize with refresh token: {$accessToken['error_description']}",
-                );
+                $this->isValidToken = false;
+
+                return;
             }
 
             $this->client->setAccessToken($accessToken);
@@ -132,7 +139,35 @@ class GoogleCalendarService
                 ],
             );
 
-            throw $e;
+            $this->isValidToken = false;
+        }
+    }
+
+    public function __construct(User|string|null $userOrRefreshToken = null)
+    {
+        $this->client = new Client();
+
+        $this->client->setClientId(
+            config('google-calendar.auth_profiles.oauth.client_id'),
+        );
+        $this->client->setClientSecret(
+            config('google-calendar.auth_profiles.oauth.client_secret'),
+        );
+        $this->client->setAccessType('offline');
+        $this->client->setIncludeGrantedScopes(true);
+        $this->client->setPrompt('consent');
+        $this->client->setScopes([
+            'https://www.googleapis.com/auth/calendar.readonly',
+            'https://www.googleapis.com/auth/calendar.events',
+        ]);
+
+        // Handle User object or refresh token string
+        if ($userOrRefreshToken instanceof User) {
+            $this->user = $userOrRefreshToken;
+            $this->initializeWithUser($userOrRefreshToken);
+        } elseif (is_string($userOrRefreshToken) && ! empty($userOrRefreshToken)) {
+            $this->refreshToken = $userOrRefreshToken;
+            $this->initializeWithRefreshToken($userOrRefreshToken);
         }
     }
 
