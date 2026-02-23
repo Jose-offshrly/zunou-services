@@ -52,7 +52,9 @@ final readonly class CreateNotificationMutation
                 summaryId: $input['summaryId'] ?? null,
                 kind: $input['kind'] ?? null,
                 pulseId: $input['pulseId'] ?? null,
-                organizationId: $input['organizationId'] ?? null
+                organizationId: $input['organizationId'] ?? null,
+                teamMessageId: $input['teamMessageId'] ?? null,
+                topicId: $input['topicId'] ?? null,
             );
 
             return $notification->refresh();
@@ -75,6 +77,8 @@ final readonly class CreateNotificationMutation
             'kind' => 'nullable|string',
             'notifyPulseMembers' => 'nullable|boolean',
             'notifyActiveMembers' => 'nullable|boolean',
+            'teamMessageId' => 'nullable|exists:team_messages,id',
+            'topicId' => 'nullable|exists:topics,id',
         ]);
 
         if ($validator->fails()) {
@@ -113,7 +117,9 @@ final readonly class CreateNotificationMutation
                 summaryId: $input['summaryId'] ?? null,
                 kind: $input['kind'] ?? null,
                 pulseId: $pulseId,
-                organizationId: $input['organizationId'] ?? null
+                organizationId: $input['organizationId'] ?? null,
+                teamMessageId: $input['teamMessageId'] ?? null,
+                topicId: $input['topicId'] ?? null,
             );
         }
 
@@ -155,7 +161,9 @@ final readonly class CreateNotificationMutation
                 summaryId: $input['summaryId'] ?? null,
                 kind: $input['kind'] ?? null,
                 pulseId: $pulseId,
-                organizationId: $input['organizationId'] ?? null
+                organizationId: $input['organizationId'] ?? null,
+                teamMessageId: $input['teamMessageId'] ?? null,
+                topicId: $input['topicId'] ?? null,
             );
         }
 

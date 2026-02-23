@@ -6,14 +6,17 @@ namespace App\Actions\Event;
 
 use App\Actions\MeetingSession\CreateMeetingSessionAction;
 use App\Concerns\CalendarEventHandler;
+use App\DataTransferObjects\Calendar\EventInstanceData;
 use App\DataTransferObjects\MeetingSession\MeetingSessionData;
 use App\DataTransferObjects\ScheduledEventData;
 use App\Enums\EventPriority;
+use App\Enums\EventSourceType;
 use App\Enums\MeetingSessionStatus;
 use App\Enums\MeetingSessionType;
 use App\Enums\PulseCategory;
 use App\Helpers\LocationHelper;
 use App\Models\Event;
+use App\Models\EventInstance;
 use App\Models\Pulse;
 use App\Models\User;
 use GraphQL\Error\Error;
@@ -28,6 +31,8 @@ class CreateEventAction
     public function __construct(
         private readonly CreateMeetingSessionAction $createMeetingSessionAction,
         private readonly CreateEventOwnerAction $createEventOwnerAction,
+        private readonly CreateEventInstanceAction $createEventInstanceAction,
+        private readonly CreateEventSourceAction $createEventSourceAction,
     ) {
     }
 
@@ -45,9 +50,8 @@ class CreateEventAction
 
             $event = Event::firstOrCreate(
                 [
-                    'pulse_id'        => $data->pulse_id,
+                    'organization_id' => $data->organization_id,
                     'date'            => $data->date,
-                    'user_id'         => $data->user_id,
                     'start_at'        => $data->start_at,
                     'google_event_id' => $googleEventId,
                 ],
@@ -61,13 +65,53 @@ class CreateEventAction
                     'priority'        => $data->priority ?? EventPriority::MEDIUM->value,
                     'summary'         => $data->summary,
                     'description'     => $data->description,
-                    'pulse_id'        => $data->pulse_id,
+                    'pulse_id'        => null,
                     'organization_id' => $data->organization_id,
-                    'user_id'         => $data->user_id,
-                    'guests'          => $data->attendees,
-                    'google_event_id' => $googleEventId,
+                    'user_id'              => $data->user_id,
+                    'guests'               => $data->attendees,
+                    'google_event_id'      => $googleEventId,
+                    'google_cal_organizer' => $data->google_cal_organizer,
                 ],
             );
+
+            $pulse = Pulse::find($data->pulse_id);
+
+            if (! $pulse) {
+                throw new Error('Pulse not found!');
+            }
+
+            // Create EventOwner linking the event to the pulse
+            $this->createEventOwnerAction->handle(
+                event: $event,
+                eventable: $pulse,
+            );
+
+            // Create EventInstance linking the event to the pulse
+            $eventInstance = $this->createEventInstanceAction->handle(
+                data: EventInstanceData::from([
+                    'event_id'          => (string) $event->id,
+                    'pulse_id'          => (string) $pulse->id,
+                    'local_description' => null,
+                    'priority'          => $data->priority,
+                ]),
+            );
+
+            // Create EventSource for the event
+            $eventSource = $this->createEventSourceAction->handle([
+                'source'    => $data->source_type ?? EventSourceType::MANUAL,
+                'source_id' => $data->source_id ?? $googleEventId ?? (string) Str::uuid(),
+                'user_id'   => $data->user_id,
+                'date'      => $data->start_at,
+                'data'      => $data->source_data ?? [
+                    'name'        => $data->name,
+                    'location'    => $data->location,
+                    'attendees'   => $data->attendees,
+                    'description' => $data->description,
+                    'summary'     => $data->summary,
+                ],
+            ]);
+
+            $event->update(['event_source_id' => $eventSource->id]);
 
             if (isset($data->attendees)) {
                 Log::info('attendees:', $data->attendees);
@@ -83,12 +127,6 @@ class CreateEventAction
                 }
             }
 
-            $pulse = Pulse::find($data->pulse_id);
-
-            if (! $pulse) {
-                throw new Error('Pulse not found!');
-            }
-
             // Check if location is online or if invite_pulse is true
             $isLocationOnline = LocationHelper::isLocationOnline(
                 $event->location,
@@ -98,7 +136,7 @@ class CreateEventAction
             if ($shouldCreateMeetingSession) {
                 Log::alert('EVENT LINK:'.$event->link);
                 // Create meeting session for the event if it doesn't already have one
-                $this->createMeetingSessionForEvent($event, $data);
+                $this->createMeetingSessionForEvent($event, $data, $eventInstance);
                 Log::info('Created Meeting session for event: '.$event->id, [
                     'is_location_online' => $isLocationOnline,
                     'invite_pulse'       => $data->invite_pulse,
@@ -121,6 +159,7 @@ class CreateEventAction
     private function createMeetingSessionForEvent(
         Event $event,
         ScheduledEventData $data,
+        ?EventInstance $eventInstance = null,
     ): void {
         try {
             // Check if event already has a meeting session to avoid duplicates
@@ -160,6 +199,7 @@ class CreateEventAction
                 status: MeetingSessionStatus::INACTIVE->value, // Let the action determine the appropriate status
                 event_id: $event->id,
                 recurring_meeting_id: $recurringMeetingId,
+                event_instance_id: $eventInstance?->id,
             );
 
             $user = User::find($data->user_id);

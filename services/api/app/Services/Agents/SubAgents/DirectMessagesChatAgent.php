@@ -6,6 +6,9 @@ use App\Models\DirectMessageThread;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system. Use TeamMessagesChatAgent instead.
+ */
 class DirectMessagesChatAgent extends BaseSubAgent implements SubAgentInterface
 {
 

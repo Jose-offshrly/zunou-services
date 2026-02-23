@@ -25,15 +25,26 @@ class CheckCompanionStatusJob implements ShouldQueue
 
     public $pollInterval; // seconds between polls
 
+    public $notFoundRetries; // number of consecutive 404 responses
+
+    private const MAX_NOT_FOUND_RETRIES = 10;
+
     /**
      * Create a new job instance.
      */
     public function __construct(
         MeetingSession $meetingSession,
         int $pollInterval = 5,
+        int $notFoundRetries = 0,
     ) {
-        $this->meetingSession = $meetingSession;
-        $this->pollInterval   = $pollInterval;
+        $this->meetingSession  = $meetingSession;
+        $this->pollInterval    = $pollInterval;
+        $this->notFoundRetries = $notFoundRetries;
+
+        // Dispatch only after the current DB transaction has committed.
+        // Without this, the MeetingSession may not yet be visible to the
+        // queue worker and the job would fail with ModelNotFoundException.
+        $this->afterCommit = true;
     }
 
     /**
@@ -46,14 +57,33 @@ class CheckCompanionStatusJob implements ShouldQueue
             'meeting_id' => $this->meetingSession->meeting_id,
         ]);
 
-        // Stop if 404 - resource not found
+        // Handle 404 - the bot may not have registered in DynamoDB yet.
+        // Retry up to MAX_NOT_FOUND_RETRIES before giving up.
         if ($response->status() === 404) {
+            if ($this->notFoundRetries >= self::MAX_NOT_FOUND_RETRIES) {
+                Log::info(
+                    "Meeting {$this->meetingSession->name} status endpoint returned 404 after "
+                    . self::MAX_NOT_FOUND_RETRIES . " retries, stopping polling",
+                );
+
+                $this->processBotStatus('not_found', [
+                    'status'  => 'not_found',
+                    'message' => 'Bot not found after maximum retries',
+                ]);
+
+                return;
+            }
+
             Log::info(
-                "Meeting {$this->meetingSession->name} status endpoint returned 404, stopping polling",
+                "Meeting {$this->meetingSession->name} status endpoint returned 404, "
+                . "retrying ({$this->notFoundRetries}/" . self::MAX_NOT_FOUND_RETRIES . ")",
             );
 
-            $this->meetingSession->companion_status = 'not_found';
-            $this->meetingSession->save();
+            self::dispatch(
+                $this->meetingSession,
+                $this->pollInterval,
+                $this->notFoundRetries + 1,
+            )->delay(now()->addSeconds($this->pollInterval));
 
             return;
         }

@@ -9,13 +9,18 @@ class CreateEventInstanceAction
 {
     public function handle(EventInstanceData $data): EventInstance
     {
-        // Create the EventInstance using DTO properties
-        $eventInstance = EventInstance::create([
-            'event_id'          => $data->event_id,
-            'pulse_id'          => $data->pulse_id,
-            'local_description' => $data->local_description,
-            'priority'          => $data->priority,
-        ]);
+        // Ensure only one EventInstance per (event_id, pulse_id)
+        $eventInstance = EventInstance::firstOrCreate(
+            [
+                'event_id' => $data->event_id,
+                'pulse_id' => $data->pulse_id,
+            ],
+            [
+                'local_description' => $data->local_description,
+                'priority'          => $data->priority,
+                'is_recurring'      => $data->is_recurring,
+            ]
+        );
 
         return $eventInstance->refresh();
     }

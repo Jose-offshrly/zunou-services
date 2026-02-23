@@ -7,6 +7,8 @@ use App\Actions\TeamMessage\CreateTeamMessageAction;
 use App\DataTransferObjects\TeamMessageData;
 use App\Helpers\StringHelper;
 use App\Models\TeamMessage;
+use App\Models\TeamThread;
+use App\Models\Topic;
 use App\Services\Content\ContentSanitizationService;
 use GraphQL\Error\Error;
 use Illuminate\Support\Facades\Auth;
@@ -59,6 +61,18 @@ readonly class CreateTeamMessageMutation
 
     private function createTeamMessage(array $input): TeamMessage
     {
+        if (isset($input['topicId'])) {
+            $topic = Topic::find($input['topicId']);
+
+            if (! $topic) {
+                throw new Error('The specified topic does not exist or has been deleted.');
+            }
+
+            if ($topic->entity_type !== TeamThread::class || $topic->entity_id !== $input['teamThreadId']) {
+                throw new Error('The topic does not belong to the specified team thread.');
+            }
+        }
+
         $data = new TeamMessageData(
             team_thread_id: $input['teamThreadId'],
             user_id: $input['userId'],

@@ -1,0 +1,41 @@
+type RecurringEvent {
+    id: ID!
+    google_parent_id: String!
+    created_at: DateTime
+    updated_at: DateTime
+    instanceSetups: [RecurringEventInstanceSetup!]! @hasMany
+}
+
+type RecurringEventInstanceSetup {
+    id: ID!
+    recurring_event_id: ID!
+    pulse_id: ID!
+    setting: JSON
+    invite_notetaker: Boolean!
+    created_at: DateTime
+    updated_at: DateTime
+    recurringEvent: RecurringEvent! @belongsTo
+    pulse: Pulse! @belongsTo
+}
+
+input CreateRecurringEventInput {
+    google_parent_id: String!
+        @rules(apply: ["required", "string", "max:255", "unique:recurring_events,google_parent_id"])
+}
+
+input SetupRecurringEventInstanceInput {
+    recurring_event_id: ID!
+        @rules(
+            apply: [
+                "required"
+                "min:36"
+                "max:36"
+                "exists:recurring_events,id"
+            ]
+        )
+    pulse_id: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+    setting: JSON
+    invite_notetaker: Boolean!
+        @rules(apply: ["required", "boolean"])
+}

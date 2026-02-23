@@ -6,6 +6,8 @@ namespace App\GraphQL\Mutations;
 
 use App\Actions\Event\AttachGoogleMeetToEventAction;
 use App\Models\Event;
+use App\Models\Pulse;
+use App\Models\User;
 use GraphQL\Error\Error;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -33,8 +35,22 @@ final readonly class AttachGoogleMeetToEventMutation
                 throw new Error('Event not found');
             }
 
-            // Check if user has permission to update this event
-            if ($event->user_id !== $user->id) {
+            // Check if user owns this event directly or via pulse membership
+            $isDirectOwner = $event->eventOwner()
+                ->where('entity_type', User::class)
+                ->where('entity_id', $user->id)
+                ->exists();
+
+            $isPulseMember = $event->eventOwner()
+                ->where('entity_type', Pulse::class)
+                ->whereIn('entity_id', function ($query) use ($user) {
+                    $query->select('pulse_id')
+                        ->from('pulse_members')
+                        ->where('user_id', $user->id);
+                })
+                ->exists();
+
+            if (! $isDirectOwner && ! $isPulseMember) {
                 throw new Error(
                     'You do not have permission to modify this event',
                 );

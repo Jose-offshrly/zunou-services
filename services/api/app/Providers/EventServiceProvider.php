@@ -17,8 +17,10 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use App\Events\DirectMessageSent;
 use App\Events\ReplyTeamMessageSent;
 use App\Listeners\PersonalizationContext\PersonalizationSourceEventListener;
+use App\Listeners\SendBeamsPushNotification;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -36,10 +38,14 @@ class EventServiceProvider extends ServiceProvider
             ReplyGenerationStartedListener::class,
         ],
         TeamMessageSent::class => [
-            [PersonalizationSourceEventListener::class, 'storeTeamMessageSource']
+            [PersonalizationSourceEventListener::class, 'storeTeamMessageSource'],
+            SendBeamsPushNotification::class,
         ],
         ReplyTeamMessageSent::class => [
-            [PersonalizationSourceEventListener::class, 'storeTeamMessageSource']
+            [PersonalizationSourceEventListener::class, 'storeTeamMessageSource'],
+        ],
+        DirectMessageSent::class => [
+            SendBeamsPushNotification::class,
         ],
     ];
 

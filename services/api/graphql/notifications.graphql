@@ -47,7 +47,9 @@ type NotificationContext {
     id: ID!
     summaryId: String
     taskId: String
-    isArchived: Boolean!
+    teamMessageId: String
+    topicId: String
+    isArchived: Boolean
 }
 
 input UpdateNotificationStatusInput {
@@ -70,6 +72,8 @@ input CreateNotificationInput {
     kind: NotificationKind
     notifyPulseMembers: Boolean
     notifyActiveMembers: Boolean
+    teamMessageId: String
+    topicId: String
 }
 
 input ReadNotificationsInput {

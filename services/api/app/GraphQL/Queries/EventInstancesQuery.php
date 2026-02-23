@@ -9,19 +9,20 @@ use App\Models\User;
 use Carbon\Carbon;
 use GraphQL\Error\Error;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 readonly class EventInstancesQuery
 {
-    public function __invoke($rootValue, array $args)
+    public function __invoke($rootValue, array $args): array
     {
-        $user = User::find($args['userId']) ?? Auth::user();
+        $userId = $args['userId'] ?? null;
+        $user   = $userId ? User::find($userId) : Auth::user();
         if (! $user) {
             throw new Error('No user was found');
         }
 
         $organizationId                  = $args['organizationId'];
         $pulseId                         = $args['pulseId'];
-        $userId                          = $args['userId'];
         $dateRange                       = $args['dateRange'] ?? null;
         $search                          = $args['search']    ?? null;
         $sortOrder                       = strtolower($args['sortOrder'] ?? 'asc');
@@ -42,12 +43,16 @@ readonly class EventInstancesQuery
                 'event.actionables',
                 'pulse',
             ])
-            ->whereHas('event', function ($q) use ($organizationId, $userId) {
-                $q->where('organization_id', $organizationId)
-                    ->where('user_id', $userId);
-            })
             ->where('pulse_id', $pulseId)
-            ->orderBy('created_at', $sortOrder);
+            ->whereHas('event', function ($q) use ($organizationId) {
+                $q->where('organization_id', $organizationId);
+            })
+            ->orderBy(
+                DB::raw(
+                    "(SELECT start_at FROM events WHERE events.id = event_instances.event_id)"
+                ),
+                $sortOrder,
+            );
 
         // Apply date range filter through the related event
         $userTimezone = $user->timezone ?? config('app.timezone');
@@ -86,26 +91,24 @@ readonly class EventInstancesQuery
             });
         }
 
-        // Filter: Only event instances with events that have a related meeting session
+        // Filter: Only event instances that have a related meeting session
         if ($hasMeetingSession) {
-            $query->whereHas('event.meetingSession');
+            $query->whereHas('meetingSession');
         }
 
-        // Filter: Only event instances with events that have a meeting session with a data source
+        // Filter: Only event instances that have a meeting session with a data source
         if ($hasMeetingSessionWithDataSource) {
-            $query->whereHas('event.meetingSession', function ($q) {
+            $query->whereHas('meetingSession', function ($q) {
                 $q->whereNotNull('data_source_id');
             });
         }
 
-        // Filter: Only event instances with events without a meeting session
+        // Filter: Only event instances without a meeting session
         if ($hasNoMeetingSession) {
-            $query->whereHas('event', function ($q) {
-                $q->whereDoesntHave('meetingSession');
-            });
+            $query->whereDoesntHave('meetingSession');
         }
 
-        return $query->get();
+        return $query->get()->all();
     }
 }
 

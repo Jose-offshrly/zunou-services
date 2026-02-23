@@ -77,14 +77,18 @@ class BackfillEventInstancesChunk implements ShouldQueue
                     return;
                 }
 
-                // Create an event instance for this event
-                EventInstance::create([
-                    'id'                => (string) Str::uuid(),
-                    'event_id'          => $eventData['id'],
-                    'pulse_id'          => $eventData['pulse_id'],
-                    'local_description' => null,
-                    'priority'          => $eventData['priority'] ?? null,
-                ]);
+                // Ensure only one EventInstance per (event_id, pulse_id)
+                EventInstance::firstOrCreate(
+                    [
+                        'event_id' => $eventData['id'],
+                        'pulse_id' => $eventData['pulse_id'],
+                    ],
+                    [
+                        'id'                => (string) Str::uuid(),
+                        'local_description' => null,
+                        'priority'          => $eventData['priority'] ?? null,
+                    ]
+                );
 
                 $totalInstancesCreated++;
 

@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system. Use TeamMessage read tracking instead.
+ */
 class DirectMessageRead extends Model
 {
     public $incrementing = false;

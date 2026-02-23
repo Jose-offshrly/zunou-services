@@ -43,11 +43,12 @@ class PulsePolicy extends AbstractPolicy
     public function update(User $user, array $args, ?Pulse $pulse = null): bool
     {
         $pulse = $this->loadModel($user, $args['input'], Pulse::class, $pulse);
-        if (! $pulse && ! $pulse->userHasRole($user, ['owner', 'admin'])) {
+        if (! $pulse) {
             return false;
         }
 
-        return ($user->hasPermission('update:pulses') && $this->hasOrganization($pulse)) || $user->hasPermission('admin:pulses');
+        return ($user->hasPermission('update:pulses') && $this->hasOrganization($pulse) && $pulse->userHasRole($user, ['owner', 'admin']))
+            || $user->hasPermission('admin:pulses');
     }
 
     public function updateAny(User $user, array $args): bool
@@ -62,11 +63,12 @@ class PulsePolicy extends AbstractPolicy
     public function delete(User $user, array $args, ?Pulse $pulse = null): bool
     {
         $pulse = $this->loadModel($user, $args, Pulse::class, $pulse);
-        if (! $pulse && ! $pulse->userHasRole($user, 'owner')) {
+        if (! $pulse) {
             return false;
         }
 
-        return ($user->hasPermission('delete:pulses') && $this->hasOrganization($pulse)) || $user->hasPermission('admin:pulses');
+        return ($user->hasPermission('delete:pulses') && $this->hasOrganization($pulse) && $pulse->userHasRole($user, 'owner'))
+            || $user->hasPermission('admin:pulses');
     }
 
     /**

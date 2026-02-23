@@ -25,6 +25,7 @@ class ScheduledEventData extends Data
         public readonly ?array $attendees = [],
         public readonly ?array $files = [],
         public readonly ?string $google_event_id = null,
+        public readonly ?string $google_cal_organizer = null,
         public readonly bool $invite_pulse = false,
         public readonly ?EventSourceType $source_type = null,
         public readonly ?string $source_id = null,
@@ -36,6 +37,10 @@ class ScheduledEventData extends Data
 
     public static function from(array $data): static
     {
+        // Load user to get timezone, default to UTC if not found
+        $user = isset($data['user_id']) ? \App\Models\User::find($data['user_id']) : null;
+        $timezone = $user?->timezone ?? 'UTC';
+
         return new ScheduledEventData(
             name: $data['name'],
             date: $data['date'],
@@ -58,9 +63,10 @@ class ScheduledEventData extends Data
             ),
             attendees: $data['attendees']                 ?? [],
             files: $data['files']                         ?? [],
-            google_event_id: $data['google_event_id']     ?? null,
-            invite_pulse: $data['invite_pulse']           ?? false,
-            source_type: EventSourceType::GOOGLE_CALENDAR ?? null,
+            google_event_id: $data['google_event_id']         ?? null,
+            google_cal_organizer: $data['google_cal_organizer'] ?? null,
+            invite_pulse: $data['invite_pulse']               ?? false,
+            source_type: $data['source_type'] ?? EventSourceType::GOOGLE_CALENDAR,
             source_id: $data['source_id']                 ?? null,
             source_data: [
                 'original_calendar_data' => $data,
@@ -70,7 +76,7 @@ class ScheduledEventData extends Data
                 'sync_job'               => 'FetchUserGoogleCalendarEventsJob',
             ],
             sync_with_source: false, // Don't sync back since we're importing from source
-            time_zone: $user->timezone ?? 'UTC',
+            time_zone: $timezone,
         );
     }
 

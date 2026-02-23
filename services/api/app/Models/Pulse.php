@@ -169,6 +169,11 @@ class Pulse extends Model implements Taskable, Eventable
         return $this->hasMany(TaskStatus::class);
     }
 
+    public function recurringEventInstanceSetups(): HasMany
+    {
+        return $this->hasMany(RecurringEventInstanceSetup::class);
+    }
+
     /**
      * Get the count of unread (pending) notifications.
      * Uses withCount if available, then eager-loaded relation, otherwise falls back to database query.

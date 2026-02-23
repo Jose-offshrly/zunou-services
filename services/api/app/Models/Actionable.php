@@ -20,6 +20,7 @@ class Actionable extends BaseModel
         'organization_id',
         'data_source_id',
         'event_id',
+        'event_instance_id',
         'task_id',
         'status',
     ];
@@ -34,6 +35,11 @@ class Actionable extends BaseModel
         return $this->belongsTo(Event::class);
     }
 
+    public function eventInstance(): BelongsTo
+    {
+        return $this->belongsTo(EventInstance::class);
+    }
+
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);
@@ -42,5 +48,10 @@ class Actionable extends BaseModel
     public function scopeForEvent(Builder $query, string $eventId): Builder
     {
         return $query->where('event_id', $eventId);
+    }
+
+    public function scopeForEventInstance(Builder $query, string $eventInstanceId): Builder
+    {
+        return $query->where('event_instance_id', $eventInstanceId);
     }
 }

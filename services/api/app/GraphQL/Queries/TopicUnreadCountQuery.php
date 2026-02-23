@@ -3,6 +3,7 @@
 namespace App\GraphQL\Queries;
 
 use App\Models\TeamMessage;
+use App\Models\TeamThread;
 use App\Models\Topic;
 use Illuminate\Support\Facades\Auth;
 
@@ -16,12 +17,11 @@ final readonly class TopicUnreadCountQuery
             return 0;
         }
 
-        // Use preloaded count if available, otherwise query
-        if (isset($topic->unread_count)) {
-            return (int) $topic->unread_count;
-        }
-
         return TeamMessage::where('topic_id', $topic->id)
+            ->when($topic->entity_type === TeamThread::class && $topic->entity_id, function ($q) use ($topic) {
+                $q->where('team_thread_id', $topic->entity_id);
+            })
+            ->whereNull('deleted_at')
             ->whereDoesntHave('reads', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })

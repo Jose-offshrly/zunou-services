@@ -6,6 +6,7 @@ use App\Actions\MeetingSession\CreateMeetingSessionAction;
 use App\DataTransferObjects\MeetingSession\MeetingSessionData;
 use App\Enums\MeetingSessionStatus;
 use App\Models\Event;
+use App\Models\EventInstance;
 use App\Models\MeetingSession;
 use App\Models\ScheduledJob;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -14,6 +15,7 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -42,6 +44,8 @@ class CreateNextMeetingSessionJob implements ShouldQueue
         $user         = $this->meetingSession->user ?? \Auth::user();
         Log::info('Getting the next instance from events');
         $nextInstance = $this->getNextInstanceFromEvents($this->meetingSession);
+        $nextEI = $this->getNextInstanceFromEventInstances($this->meetingSession);
+
 
         if ($nextInstance) {
             Log::info('Next instance found', [
@@ -98,6 +102,7 @@ class CreateNextMeetingSessionJob implements ShouldQueue
                 gcal_meeting_id: $nextInstance->google_event_id,
                 status: MeetingSessionStatus::INACTIVE->value,
                 event_id: $nextInstance->id ? (string) $nextInstance->id : null,
+                event_instance_id: $nextEI->id ? (string) $nextEI->id : null,
                 recurring_meeting_id: $this->meetingSession
                     ->recurring_meeting_id,
             );
@@ -135,13 +140,35 @@ class CreateNextMeetingSessionJob implements ShouldQueue
             'like',
             $googleEventIdPattern,
         )
-            ->where('pulse_id', $pulseId)
-            ->where('user_id', $userId)
+            ->where('organization_id', $session->organization_id)
             ->where('start_at', '>', now())
             ->orderBy('start_at', 'asc')
             ->first();
 
         return $nextEvent;
+    }
+
+    private function getNextInstanceFromEventInstances(MeetingSession $session)
+    {
+        $pulseId = $session->pulse_id;
+
+        if (! $pulseId) {
+            return null;
+        }
+
+        $nextEventInstance = EventInstance::where('pulse_id', $pulseId)
+            ->whereHas('event', function ($query) {
+                $query->where('start_at', '>', now());
+            })
+            ->orderBy(
+                DB::raw(
+                    "(SELECT start_at FROM events WHERE events.id = event_instances.event_id)"
+                ),
+                'asc',
+            )
+            ->first();
+
+        return $nextEventInstance;
     }
 
     private function scheduleMeetingSummaryReminder(MeetingSession $meetingSession, MeetingSession $nextMeetingSession)

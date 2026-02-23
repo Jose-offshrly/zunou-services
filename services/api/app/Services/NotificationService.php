@@ -24,6 +24,8 @@ class NotificationService
         ?string $pulseId = null,
         ?string $taskId = null,
         ?string $organizationId = null,
+        ?string $teamMessageId = null,
+        ?string $topicId = null,
     ): Notification {
         return DB::transaction(function () use (
             $description,
@@ -34,6 +36,8 @@ class NotificationService
             $pulseId,
             $taskId,
             $organizationId,
+            $teamMessageId,
+            $topicId,
         ) {
             switch ($type) {
                 case NotificationType::ORGANIZATION:
@@ -43,7 +47,7 @@ class NotificationService
                     return $this->createPulseNotification($description, $notifiableId, $kind, $summaryId);
 
                 case NotificationType::USERS:
-                    return $this->createUserNotification($description, $notifiableId, $kind, $pulseId, $summaryId, $taskId, $organizationId);
+                    return $this->createUserNotification($description, $notifiableId, $kind, $pulseId, $summaryId, $taskId, $organizationId, $teamMessageId, $topicId);
 
                 default:
                     throw new Exception("Unsupported notification type: {$type->value}");
@@ -120,6 +124,8 @@ class NotificationService
         ?string $summaryId,
         ?string $taskId,
         ?string $organizationId = null,
+        ?string $teamMessageId = null,
+        ?string $topicId = null,
     ): Notification {
         $pulse = $pulseId ? Pulse::find($pulseId) : null;
 
@@ -162,6 +168,15 @@ class NotificationService
                 'notification_id' => $notification->id,
                 'task_id'         => $taskId,
                 'is_archived'     => false,
+            ]);
+        }
+
+        if ($teamMessageId !== null || $topicId !== null) {
+            NotificationContext::create([
+                'notification_id'  => $notification->id,
+                'team_message_id'  => $teamMessageId,
+                'topic_id'         => $topicId,
+                'is_archived'      => false,
             ]);
         }
 

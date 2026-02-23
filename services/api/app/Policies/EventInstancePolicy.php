@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\Event;
 use App\Models\EventInstance;
 use App\Models\Pulse;
 use App\Models\User;
@@ -44,6 +45,22 @@ class EventInstancePolicy extends AbstractPolicy
         $this->checkPulseMembership(user: $user, args: $args, model: Pulse::class);
 
         return $user->hasPermission('create:event-instances') && $user->hasOrganization($args['organization_id']);
+    }
+
+    /**
+     * Determine whether the user can add an event to a pulse.
+     * Checks pulse membership and org membership via the event.
+     */
+    public function addToPulse(User $user, array $args): bool
+    {
+        $this->checkPulseMembership(user: $user, args: $args, model: Pulse::class);
+
+        $event = Event::find($args['event_id'] ?? null);
+        if (! $event) {
+            throw new Error('Event not found!');
+        }
+
+        return $user->hasPermission('create:event-instances') && $user->hasOrganization($event->organization_id);
     }
 
     /**

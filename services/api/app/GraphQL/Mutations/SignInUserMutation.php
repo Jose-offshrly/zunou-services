@@ -12,8 +12,9 @@ use App\Services\Auth0RoleService;
 use App\Services\PersonalPulseService;
 use App\Services\RefreshAuth0PermissionsService;
 use Auth0\SDK\Auth0;
+use Auth0\SDK\Configuration\SdkConfiguration;
+use Auth0\SDK\Token;
 use GraphQL\Error\Error;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -28,17 +29,43 @@ final readonly class SignInUserMutation
         $userRoleId    = Config::get('auth0.roles.user');
         $guestRoleId   = Config::get('auth0.roles.guest');
 
+        // Use STRATEGY_API + TYPE_ACCESS_TOKEN to match JwtGuard's proven pattern.
+        // Without these, the SDK defaults to STRATEGY_REGULAR + TYPE_ID_TOKEN,
+        // which applies stricter ID token validation (azp check) that fails for
+        // access tokens issued to a different client ID (e.g., Capacitor native app).
         $auth0 = new Auth0([
+            'strategy'     => SdkConfiguration::STRATEGY_API,
             'domain'       => env('AUTH0_DOMAIN'),
             'clientId'     => env('AUTH0_CLIENT_ID'),
             'clientSecret' => env('AUTH0_CLIENT_SECRET'),
             'cookieSecret' => env('AUTH0_COOKIE_SECRET'),
             'audience'     => [env('AUTH0_AUDIENCE')],
+            'tokenLeeway'  => 60, // Allow 60 seconds clock skew tolerance
         ]);
 
-        $token        = $this->extractTokenFromContext($context);
-        $decodedToken = $auth0->decode($token);
-        $auth0Id      = $decodedToken->getSubject();
+        $token = $this->extractTokenFromContext($context);
+
+        try {
+            $decodedToken = $auth0->decode(
+                $token,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                Token::TYPE_ACCESS_TOKEN,
+            );
+        } catch (\Exception $e) {
+            Log::error('SignInUserMutation: Token decode failed', [
+                'error' => $e->getMessage(),
+                'type'  => get_class($e),
+            ]);
+
+            throw new Error('Authentication failed: Invalid or expired token. Please sign in again.');
+        }
+
+        $auth0Id = $decodedToken->getSubject();
 
         $tokenData = $decodedToken->toArray();
         $email     = $tokenData['email'] ?? null;
@@ -85,7 +112,12 @@ final readonly class SignInUserMutation
         }
 
         if (! $email) {
-            throw new AuthenticationException('No email was provided');
+            Log::error('SignInUserMutation: No email found', [
+                'auth0_id' => $auth0Id,
+                'provider' => $provider,
+            ]);
+
+            throw new Error('No email was found in the authentication token. Please ensure your account has a verified email.');
         }
 
         // Normalize email to lowercase for consistent matching
@@ -285,7 +317,7 @@ final readonly class SignInUserMutation
                 'existing_users_with_similar_email' => $existingUsers->toArray(),
             ]);
 
-            throw new AuthenticationException('User not found');
+            throw new Error('User not found for email: ' . $email . '. Please contact your administrator.');
         }
 
         // Log detailed user information for debugging
@@ -348,7 +380,17 @@ final readonly class SignInUserMutation
 
         $user->refresh();
 
-        RefreshAuth0PermissionsService::perform($user, $finalAuth0Id);
+        // Wrap in try/catch — Management API failures should not block sign-in
+        try {
+            RefreshAuth0PermissionsService::perform($user, $finalAuth0Id);
+        } catch (\Exception $e) {
+            Log::error('SignInUserMutation: RefreshAuth0PermissionsService failed (non-fatal)', [
+                'user_id'       => $user->id,
+                'auth0_id'      => $finalAuth0Id,
+                'error'         => $e->getMessage(),
+                'error_type'    => get_class($e),
+            ]);
+        }
 
         $this->ensureUserHasPersonalPulses(user: $user);
 

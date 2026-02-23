@@ -7,6 +7,7 @@ namespace App\Actions\Event;
 use App\Concerns\CalendarEventHandler;
 use App\DataTransferObjects\ScheduledEventData;
 use App\Models\Event;
+use App\Models\Pulse;
 use App\Models\User;
 use App\Services\GoogleCalendarService;
 use Illuminate\Support\Carbon;
@@ -91,6 +92,15 @@ class AttachGoogleMeetToEventAction
                 'event_name' => $event->name,
             ]);
 
+            // Resolve pulse_id from EventOwner since it's no longer stored on the Event
+            $pulseId = $event->eventOwner()
+                ->where('entity_type', Pulse::class)
+                ->value('entity_id');
+
+            if (! $pulseId) {
+                throw new \RuntimeException('No pulse owner found for this event');
+            }
+
             // Create ScheduledEventData for the calendar event creation
             // Access raw UTC values from database and convert to user timezone for Google Calendar
             $eventData = new ScheduledEventData(
@@ -106,9 +116,9 @@ class AttachGoogleMeetToEventAction
                     $event->end_at,
                     $user->timezone,
                 )->timezone('UTC'),
-                pulse_id: $event->pulse_id,
+                pulse_id: $pulseId,
                 organization_id: $event->organization_id,
-                user_id: $event->user_id,
+                user_id: $user->id,
                 create_event: true, // This will trigger calendar event creation
                 location: $event->location,
                 summary: $event->summary,

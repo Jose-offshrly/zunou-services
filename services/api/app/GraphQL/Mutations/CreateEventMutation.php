@@ -28,8 +28,14 @@ final readonly class CreateEventMutation
 
             $this->validateInput($args);
 
+            $attendees = $args['attendees'] ?? [];
+            if (! in_array($user->email, $attendees)) {
+                $attendees[] = $user->email;
+            }
+
             $data = ScheduledEventData::from([
                 ...$args,
+                'attendees'    => $attendees,
                 'start_at'     => Carbon::parse($args['start_at']),
                 'end_at'       => Carbon::parse($args['end_at']),
                 'invite_pulse' => $args['invite_pulse'] ?? false,

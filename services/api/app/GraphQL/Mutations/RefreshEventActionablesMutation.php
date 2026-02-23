@@ -17,15 +17,12 @@ final class RefreshEventActionablesMutation
     {
         try {
             $meetingId = $args['meetingId'];
-            $eventId = $args['eventId'];
 
             Log::info('Refreshing event actionables', [
                 'meetingId' => $meetingId,
-                'eventId' => $eventId,
             ]);
 
-            return DB::transaction(function () use ($meetingId, $eventId) {
-                // Find the meeting by meeting_id
+            return DB::transaction(function () use ($meetingId) {
                 $meeting = Meeting::where('id', $meetingId)->first();
 
                 if (!$meeting) {
@@ -46,23 +43,26 @@ final class RefreshEventActionablesMutation
                     );
                 }
 
-                // Delete existing actionables for the given event_id
-                $deletedCount = Actionable::forEvent($eventId)->delete();
+                // Delete existing actionables for the given event_instance_id
+                $eventInstanceId = $meeting->meetingSession?->event_instance_id;
+                if (!$eventInstanceId) {
+                    throw new Error('Meeting does not have an associated event instance');
+                }
+                $deletedCount = Actionable::forEventInstance($eventInstanceId)->delete();
 
                 Log::info('Deleted existing actionables', [
-                    'eventId' => $eventId,
+                    'eventInstanceId' => $eventInstanceId,
                     'deletedCount' => $deletedCount,
                 ]);
 
                 // Dispatch the job to create new actionables
                 CreateEventActionablesJob::dispatch(
                     $meeting,
-                    $eventId
                 )->onQueue('default');
 
                 Log::info('Dispatched CreateEventActionablesJob', [
                     'meetingId' => $meetingId,
-                    'eventId' => $eventId,
+                    'eventInstanceId' => $eventInstanceId,
                 ]);
 
                 return true;
@@ -72,7 +72,6 @@ final class RefreshEventActionablesMutation
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'meetingId' => $args['meetingId'] ?? null,
-                'eventId' => $args['eventId'] ?? null,
             ]);
 
             throw new Error(

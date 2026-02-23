@@ -70,9 +70,9 @@ class TeamThread extends BaseModel implements ThreadInterface
         return $this->hasMany(TeamMessage::class);
     }
 
-    public function topics(): HasMany
+    public function topics(): MorphMany
     {
-        return $this->hasMany(Topic::class);
+        return $this->morphMany(Topic::class, 'entity');
     }
 
     public function replyTeamThreads(): HasMany

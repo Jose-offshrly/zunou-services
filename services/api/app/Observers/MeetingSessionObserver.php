@@ -8,6 +8,7 @@ use App\Enums\MeetingSessionType;
 use App\Events\MeetingSessionStatusUpdated;
 use App\Models\MeetingSession;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class MeetingSessionObserver
 {
@@ -44,6 +45,14 @@ class MeetingSessionObserver
      */
     public function updated(MeetingSession $meetingSession): void
     {
+        Log::debug('MeetingSession updated', [
+            'id'    => $meetingSession->id,
+            'dirty' => $meetingSession->getDirty(),
+            'trace' => collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10))
+                ->map(fn($f) => ($f['class'] ?? '') . ($f['type'] ?? '') . $f['function'] . ' ' . ($f['file'] ?? '') . ':' . ($f['line'] ?? ''))
+                ->implode("\n"),
+        ]);
+
         event(new MeetingSessionStatusUpdated(meetingSession: $meetingSession));
     }
 }

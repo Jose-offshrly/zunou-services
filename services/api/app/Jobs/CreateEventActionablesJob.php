@@ -108,7 +108,7 @@ PROMPT;
                     organization_id: $this->meeting->dataSource
                         ->organization_id,
                     data_source_id: $this->meeting->dataSource->id,
-                    event_id: $this->eventId ?? ($meetingSession->event_id ?? null),
+                    event_instance_id: $meetingSession?->event_instance_id,
                 );
                 $createActionableAction = new CreateActionableAction();
                 $createActionableAction->handle($actionableData);
@@ -126,15 +126,15 @@ PROMPT;
                 ],
             );
 
-            // Get the event ID for the Pusher event
-            $eventId = $this->eventId ?? ($meetingSession->event_id ?? null);
+            // Get the event instance ID for the Pusher event
+            $eventInstanceId = $meetingSession?->event_instance_id;
 
             // Dispatch the Pusher event when actionables are completed
-            if ($eventId) {
+            if ($eventInstanceId) {
                 event(
                     new EventActionablesCompleted(
                         meeting: $this->meeting,
-                        eventId: $eventId,
+                        eventId: $eventInstanceId,
                         actionables: $actionables,
                         organizationId: $this->meeting->dataSource
                             ->organization_id,

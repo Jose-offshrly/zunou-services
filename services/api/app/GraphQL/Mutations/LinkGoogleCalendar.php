@@ -2,7 +2,9 @@
 
 namespace App\GraphQL\Mutations;
 
+use App\Jobs\GoogleCalendarEventDeltaSyncJob;
 use App\Jobs\SetupUserGoogleCalendarWebhookJob;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -166,8 +168,8 @@ class LinkGoogleCalendar
                     'google_calendar_linked' => $user->google_calendar_linked,
                 ]);
 
-                // Setup Google Calendar webhook for the user
-                SetupUserGoogleCalendarWebhookJob::dispatch($user, true);
+                $this->dispatchCalendarJobs($user);
+                
             } else {
                 Log::error('User not found during Google Calendar linking', [
                     'auth0_user_id' => $auth0UserId,
@@ -188,6 +190,22 @@ class LinkGoogleCalendar
                 'success' => false,
                 'message' => 'Exception: '.$e->getMessage(),
             ];
+        }
+    }
+
+    private function dispatchCalendarJobs(User $user): void
+    {
+        SetupUserGoogleCalendarWebhookJob::dispatch($user, true);
+
+        foreach ($user->organizationIds() as $organizationId) {
+            dispatch(new GoogleCalendarEventDeltaSyncJob(
+                user: $user,
+                args: [
+                    'input' => [
+                        'organizationId' => $organizationId,
+                    ],
+                ],
+            ));
         }
     }
 

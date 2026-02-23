@@ -174,20 +174,7 @@ class TranscriptQueueWorkerJob implements ShouldQueue
 
             MeetingSessionEnded::dispatch($meetingSession);
 
-            if ($meetingSession->recurring_meeting_id) {
-                Log::info(
-                    'Meeting session is recurring, dispatching create next meeting session job',
-                );
-                CreateNextMeetingSessionJob::dispatch(
-                    meetingSession: $meetingSession,
-                )->onQueue('default');
 
-                Log::info('Create next meeting session job dispatched');
-            } else {
-                Log::info(
-                    'Meeting session is not recurring, skipping create next meeting session job',
-                );
-            }
         });
 
         CheckDownscaleJob::dispatch();

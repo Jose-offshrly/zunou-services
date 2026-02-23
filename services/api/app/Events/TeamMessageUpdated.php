@@ -11,6 +11,20 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * @deprecated BROADCAST DEPRECATION: The Pusher channel broadcasting (ShouldBroadcast) in this class is
+ * deprecated and will be removed in a future release. Real-time message delivery is now handled by the
+ * Notification Hub Lambda service, which sends events via pusher.trigger() to private-users.{userId} channels.
+ *
+ * The dashboard frontend uses useHubChat (hooks/useHubChat.ts) to subscribe to Hub events (.team-updated),
+ * NOT Echo/Laravel channel subscriptions. These broadcasts go to channels that nothing listens to.
+ *
+ * For new real-time features, use the Notification Hub:
+ * - Dashboard: services/dashboard/src/services/NotificationHubClient.ts
+ * - Hub Lambda: services/lambda/notification-hub/
+ * - Frontend subscription: services/dashboard/src/context/NotificationHubContext.tsx
+ * - Frontend hook: services/dashboard/src/hooks/useHubChat.ts
+ */
 class TeamMessageUpdated implements ShouldBroadcast
 {
     use Dispatchable;

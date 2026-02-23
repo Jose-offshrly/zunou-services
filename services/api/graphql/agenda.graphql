@@ -3,7 +3,10 @@ type Agenda {
     name: String!
     pulse_id: ID!
     organization_id: ID!
-    event: Event!
+    event_id: ID
+    event_instance_id: ID
+    event: Event
+    eventInstance: EventInstance
     position: Int!
     created_at: DateTime!
     updated_at: DateTime!

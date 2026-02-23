@@ -20,20 +20,24 @@ final readonly class UpdatePulseMemberRoleMutation
             in_array(
                 $pulse->category?->value,
                 [
-                    PulseCategory::ONETOONE->value,
                     PulseCategory::PERSONAL->value,
                 ],
                 true,
             )
         ) {
             throw new Error(
-                'Cannot update member roles for a pulse with category ONETOONE or PERSONAL.',
+                'Cannot update member roles for a pulse with category PERSONAL.',
             );
         }
         try {
-            $this->validateInput($args['input']);
+            $input = $args['input'];
+            $input['role'] = $input['role'] instanceof PulseMemberRole
+                ? $input['role']->value
+                : $input['role'];
 
-            return $this->updatePulseMember($args['input']);
+            $this->validateInput($input);
+
+            return $this->updatePulseMember($input);
         } catch (\Exception $e) {
             throw new Error(
                 'Failed to update pulse member: ' . $e->getMessage(),
@@ -68,7 +72,7 @@ final readonly class UpdatePulseMemberRoleMutation
             $pulseMember = PulseMember::query()
                 ->wherePulseId($input['pulseId'])
                 ->whereUserId($input['userId'])
-                ->first();
+                ->firstOrFail();
 
             $pulseMember->role = $input['role'];
             $pulseMember->save();

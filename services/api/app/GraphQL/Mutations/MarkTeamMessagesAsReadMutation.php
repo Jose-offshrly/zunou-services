@@ -26,7 +26,8 @@ final readonly class MarkTeamMessagesAsReadMutation
 
         $topicId = $args['topicId'] ?? null;
 
-        $unreadMessageIds = TeamMessage::where('team_thread_id', $args['threadId'])
+        $unreadMessageIds = TeamMessage::withTrashed()
+            ->where('team_thread_id', $args['threadId'])
             ->whereDoesntHave('reads', fn($q) => $q->where('user_id', $user->id))
             ->when(
                 $topicId !== null,

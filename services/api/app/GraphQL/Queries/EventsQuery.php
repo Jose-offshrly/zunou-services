@@ -21,8 +21,6 @@ readonly class EventsQuery
         }
 
         $organizationId                  = $args['organizationId'];
-        $pulseId                         = $args['pulseId'];
-        $userId                          = $args['userId'];
         $dateRange                       = $args['dateRange'] ?? null;
         $search                          = $args['search']    ?? null;
         $sortOrder                       = strtolower($args['sortOrder'] ?? 'asc');
@@ -45,8 +43,9 @@ readonly class EventsQuery
                 'actionables',
             ])
             ->where('organization_id', $organizationId)
-            ->where('pulse_id', $pulseId)
-            ->where('user_id', $userId)
+            ->whereHas('attendees', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
             ->orderBy(
                 DB::raw(
                     "start_at || ' ' || COALESCE(start_at::text, '00:00:00')",

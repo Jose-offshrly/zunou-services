@@ -52,6 +52,7 @@ environments:
             - high-staging
             - default-staging
             - mail-staging
+        queue-memory: 1769
         queue-timeout: 900
         runtime: 'php-8.2:al2'
         scheduler: sub-minute

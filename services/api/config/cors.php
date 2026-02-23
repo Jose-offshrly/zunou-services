@@ -27,6 +27,8 @@ return [
     'allowed_origins' => [
         'https://dashboard.zunou.ai',
         'https://dashboard.staging.zunou.ai',
+        'https://organizations.zunou.ai',
+        'https://organizations.staging.zunou.ai',
         'http://localhost:5173',
         'http://localhost:8080',
         'https://scout.staging.zunou.ai',

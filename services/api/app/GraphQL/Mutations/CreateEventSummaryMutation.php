@@ -3,6 +3,7 @@
 namespace App\GraphQL\Mutations;
 
 use App\Models\Event;
+use App\Models\Pulse;
 use App\Services\OpenAIService;
 
 class CreateEventSummaryMutation
@@ -11,7 +12,13 @@ class CreateEventSummaryMutation
     {
         $event = Event::where('id', $args['eventId'])
             ->where('organization_id', $args['organizationId'])
-            ->where('pulse_id', $args['pulseId'])
+            ->where(function ($q) use ($args) {
+                // Match via event_owners or legacy pulse_id column
+                $q->whereHas('eventOwner', function ($ownerQuery) use ($args) {
+                    $ownerQuery->where('entity_type', Pulse::class)
+                        ->where('entity_id', $args['pulseId']);
+                })->orWhere('pulse_id', $args['pulseId']);
+            })
             ->firstOrFail();
 
         $summary = $this->createSummary($event);

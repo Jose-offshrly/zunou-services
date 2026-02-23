@@ -10,6 +10,9 @@ use App\Models\OrganizationUser;
 use App\Models\PinnedOrganizationUser;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * @deprecated Part of deprecated DirectMessage system. Use TeamMessagesQuery with ONETOONE pulse category instead.
+ */
 final readonly class DirectMessagesQuery
 {
     /** @param  array{}  $args */

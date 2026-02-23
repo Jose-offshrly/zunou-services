@@ -43,6 +43,11 @@ class Event extends BaseModel implements Participable
         return $this->belongsTo(User::class);
     }
 
+    public function recurringEvent(): BelongsTo
+    {
+        return $this->belongsTo(RecurringEvent::class);
+    }
+
     public function agendas(): HasMany
     {
         return $this->hasMany(Agenda::class);
@@ -82,11 +87,32 @@ class Event extends BaseModel implements Participable
     }
 
     /**
+     * @return HasOne the event owner associated with this event
+     */
+    public function eventOwner(): HasOne
+    {
+        return $this->hasOne(EventOwner::class);
+    }
+
+    /**
      * @return EventInstance[]|HasMany event instances associated with this event
      */
     public function eventInstances(): HasMany
     {
         return $this->hasMany(EventInstance::class);
+    }
+
+    public function scopeRecurring($query)
+    {
+        return $query->whereNotNull('recurring_event_id');
+    }
+
+    /**
+     * Check if this is part of a recurring series.
+     */
+    public function isRecurringInstance(): bool
+    {
+        return $this->recurring_event_id !== null;
     }
 
     public function getDateAttribute(): ?string
@@ -159,21 +185,33 @@ class Event extends BaseModel implements Participable
         $usedEmails = []; // Track emails to avoid duplicates
 
         // Get attendees from the database relationship
-        // Use the already loaded relationship to avoid N+1 queries
-        $attendees = $this->attendees;
-        foreach ($attendees as $attendee) {
-            // Check if user is already loaded to avoid N+1
-            if ($attendee->relationLoaded('user') && $attendee->user) {
-                $email        = strtolower(trim($attendee->user->email));
-                $usedEmails[] = $email;
+        // Load with user relationship if not already loaded
+        if (! $this->relationLoaded('attendees')) {
+            $this->load('attendees.user');
+        }
 
-                $combined[] = [
-                    'id'       => $attendee->user->id,
-                    'name'     => $attendee->user->name,
-                    'email'    => $attendee->user->email,
-                    'gravatar' => $attendee->user->gravatar,
-                ];
+        foreach ($this->attendees as $attendee) {
+            $user = $attendee->user;
+
+            if (! $user) {
+                continue;
             }
+
+            $email = strtolower(trim($user->email));
+
+            // Skip if this email is already used (prevents duplicate attendee records)
+            if (in_array($email, $usedEmails)) {
+                continue;
+            }
+
+            $usedEmails[] = $email;
+
+            $combined[] = [
+                'id'       => $user->id,
+                'name'     => $user->name,
+                'email'    => $user->email,
+                'gravatar' => $user->gravatar,
+            ];
         }
 
         // Get guests from the JSON column (already formatted)
@@ -187,10 +225,13 @@ class Event extends BaseModel implements Participable
                 $guestEmail      = $guestName;
                 $normalizedEmail = strtolower(trim($guestEmail));
 
-                // Skip if this email is already used by an attendee
+                // Skip if this email is already used by an attendee or another guest
                 if (in_array($normalizedEmail, $usedEmails)) {
                     continue;
                 }
+
+                // Track this guest email to prevent duplicates
+                $usedEmails[] = $normalizedEmail;
             }
 
             $combined[] = [
@@ -202,5 +243,92 @@ class Event extends BaseModel implements Participable
         }
 
         return $combined;
+    }
+
+    /**
+     * Get all EventInstances the user can access that relate to the same calendar event.
+     *
+     * Returns instances across different Event records that share the same google_event_id,
+     * filtered by the user's pulse memberships. Access control is enforced at the instance
+     * level via pulse membership, consistent with getVisibleMeetingSessions().
+     *
+     * @param  User  $user  The user to check visibility for
+     * @return \Illuminate\Support\Collection<EventInstance>
+     */
+    public function getVisibleEventInstances(User $user): \Illuminate\Support\Collection
+    {
+        $organization_id = $this->organization_id;
+
+        // Get all pulse IDs the user is a member of
+        $userPulseIds = $user->pulseMemberships()->pluck('pulse_id');
+
+        // If no google_event_id, we can only return instances of this specific event
+        if (empty($this->google_event_id)) {
+            return $this->eventInstances()
+                ->whereIn('pulse_id', $userPulseIds)
+                ->with(['pulse', 'meetingSession.dataSource'])
+                ->get();
+        }
+
+        // Find ALL events with the same google_event_id in the same organization,
+        // regardless of attendee status. Access control is enforced at the instance level
+        // via pulse membership, consistent with getVisibleMeetingSessions().
+        $relatedEventIds = Event::where('google_event_id', $this->google_event_id)
+            ->where('organization_id', $organization_id)
+            ->pluck('id');
+
+        // Return all event instances across related events, filtered by user's pulse memberships
+        return EventInstance::whereIn('event_id', $relatedEventIds)
+            ->whereIn('pulse_id', $userPulseIds)
+            ->with(['event', 'pulse', 'meetingSession.dataSource'])
+            ->get();
+    }
+
+    /**
+     * Get all MeetingSessions visible to the user for this event and related events with the same google_event_id.
+     *
+     * Intentionally does NOT filter related events by user_id, because recordings should be
+     * visible across all event copies in the org (including other users' copies). Access control
+     * is enforced at the MeetingSession level via pulse membership and session ownership.
+     *
+     * @see events.graphql — visibleMeetingSessions field contract:
+     *      "Returns recordings across different Event records that share the same google_event_id,
+     *       enabling users to see recordings from team channels or other users' event copies."
+     *
+     * @param  User  $user  The user to check visibility for
+     * @return \Illuminate\Support\Collection<MeetingSession>
+     */
+    public function getVisibleMeetingSessions(User $user): \Illuminate\Support\Collection
+    {
+        // Get all pulse IDs the user is a member of
+        $userPulseIds = $user->pulseMemberships()->pluck('pulse_id');
+
+        // If no google_event_id, only return sessions for this specific event
+        if (empty($this->google_event_id)) {
+            return MeetingSession::where('event_id', $this->id)
+                ->where(function ($query) use ($userPulseIds, $user) {
+                    $query->whereIn('pulse_id', $userPulseIds)
+                        ->orWhere('user_id', $user->id);
+                })
+                ->with(['dataSource', 'event'])
+                ->get();
+        }
+
+        // Find ALL events with the same google_event_id in the same organization,
+        // regardless of user_id. This enables cross-user recording visibility —
+        // e.g., User B can see recordings from User A's event copy if they share a pulse.
+        $relatedEventIds = Event::where('google_event_id', $this->google_event_id)
+            ->where('organization_id', $this->organization_id)
+            ->pluck('id');
+
+        // Return all meeting sessions linked to any related event where user has access
+        // (via pulse membership or session ownership)
+        return MeetingSession::whereIn('event_id', $relatedEventIds)
+            ->where(function ($query) use ($userPulseIds, $user) {
+                $query->whereIn('pulse_id', $userPulseIds)
+                    ->orWhere('user_id', $user->id);
+            })
+            ->with(['dataSource', 'event'])
+            ->get();
     }
 }

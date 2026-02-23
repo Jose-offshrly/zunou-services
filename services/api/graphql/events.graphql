@@ -14,28 +14,54 @@ type Event {
     link: String
     location: String
     priority: EventPriority
-    attendees: [Attendee] @hasMany
+    attendees: [Attendee] @morphMany
     guests: JSON
     participants: [Participant!]!
     description: String
     files: JSON
-    pulse_id: ID!
+    pulse_id: ID
     organization_id: ID!
-    user_id: ID!
+    user_id: ID
     user: User
     pulse: Pulse
     organization: Organization
     agendas: [Agenda!] @hasMany
     google_event_id: String
+    google_cal_organizer: String
+    recurring_event_id: ID
+    recurringEvent: RecurringEvent @belongsTo
     meetingSession: MeetingSession @hasOne
     currentMeetingSession: MeetingSession
     meeting: Meeting @hasOne
     actionables: [Actionable]
     summary: String
+    """
+    Get all EventInstances the current user can access that relate to this calendar event.
+    Returns instances across different Event records that share the same google_event_id,
+    filtered by the user's pulse memberships.
+    """
+    visibleEventInstances: [EventInstance!]!
+        @field(
+            resolver: "App\\GraphQL\\Resolvers\\VisibleEventInstancesResolver"
+        )
+    """
+    Get all MeetingSessions the current user can access for this calendar event.
+    Returns recordings across different Event records that share the same google_event_id,
+    enabling users to see recordings from team channels or other users' event copies.
+    """
+    visibleMeetingSessions: [MeetingSession!]!
+        @field(
+            resolver: "App\\GraphQL\\Resolvers\\VisibleMeetingSessionsResolver"
+        )
 }
 
 type PaginatedEvents {
     data: [Event!]!
+    paginatorInfo: PaginatorInfo!
+}
+
+type PaginatedEventInstances {
+    data: [EventInstance!]!
     paginatorInfo: PaginatorInfo!
 }
 
@@ -67,10 +93,10 @@ input EventsInput {
         @rules(
             apply: ["required", "min:36", "max:36", "exists:organizations,id"]
         )
-    pulseId: ID!
-        @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
-    userId: ID!
-        @rules(apply: ["required", "min:36", "max:36", "exists:users,id"])
+    pulseId: ID
+        @rules(apply: ["nullable", "min:36", "max:36", "exists:pulses,id"])
+    userId: ID
+        @rules(apply: ["nullable", "min:36", "max:36", "exists:users,id"])
     dateRange: [String!]
     search: String
     sortOrder: EventSortOrder = ASC
@@ -79,6 +105,8 @@ input EventsInput {
     hasMeetingSession: Boolean
     hasMeetingSessionWithDataSource: Boolean
     hasNoMeetingSession: Boolean
+    teamPulseId: ID
+        @rules(apply: ["nullable", "min:36", "max:36", "exists:pulses,id"])
 }
 
 input CreateEventInput {
@@ -91,8 +119,8 @@ input CreateEventInput {
     attendees: [String]
     summary: String
     files: [String]
-    pulse_id: ID!
-        @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
+    pulse_id: ID
+        @rules(apply: ["nullable", "min:36", "max:36", "exists:pulses,id"])
     organization_id: ID!
         @rules(
             apply: ["required", "min:36", "max:36", "exists:organizations,id"]
@@ -145,4 +173,50 @@ input AttachMeetingSessionToEventInput {
 input GenerateEventBreakMessageInput {
     previousEventId: ID!
     nextEventId: ID!
+}
+
+input MyEventsWithRecordingsInput {
+    organizationId: ID! @rules(apply: ["required", "exists:organizations,id"])
+    "Filter to events after this date (inclusive)"
+    from: DateTime
+    "Filter to events before this date (exclusive)"
+    to: DateTime
+    "Search by event name"
+    search: String
+    page: Int = 1
+    perPage: Int = 20
+}
+
+input MyUpcomingEventsInput {
+    organizationId: ID! @rules(apply: ["required", "exists:organizations,id"])
+    "Filter to events after this date (inclusive). Defaults to now if not provided."
+    from: DateTime
+    "Filter to events before this date (exclusive)"
+    to: DateTime
+    "Search by event name"
+    search: String
+    page: Int = 1
+    perPage: Int = 20
+}
+
+input MyAttendeeEventsInput {
+    organizationId: ID! @rules(apply: ["required", "exists:organizations,id"])
+    "Exclude events already added to this pulse."
+    pulseId: ID
+        @rules(apply: ["nullable", "min:36", "max:36", "exists:pulses,id"])
+    "Filter to events after this date (inclusive). Defaults to now."
+    from: DateTime
+    "Filter to events before this date (exclusive). Defaults to now + 3 months."
+    to: DateTime
+    "Search by event name"
+    search: String
+    page: Int = 1
+    perPage: Int = 20
+}
+
+input AddEventToPulseInput {
+    event_id: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:events,id"])
+    pulse_id: ID!
+        @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
 }

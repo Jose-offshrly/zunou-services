@@ -14,13 +14,12 @@ class EventPolicy extends AbstractPolicy
      */
     public function viewAny(User $user, array $args): bool
     {
-        $this->checkPulseMembership(user: $user, args: $args, model: Pulse::class);
-
         return $user->hasPermission('read:events') && $user->hasOrganization($args['organizationId']);
     }
 
     /**
      * Determine whether the user can view a specific event.
+     * Uses event_owners to check ownership via User or Pulse membership.
      */
     public function view(User $user, array $args, ?Event $event = null): bool
     {
@@ -29,9 +28,7 @@ class EventPolicy extends AbstractPolicy
             return throw new Error('Event not found!');
         }
 
-        $this->checkPulseMembership(user: $user, args: [
-            'pulse_id' => $event->pulse_id,
-        ], model: Pulse::class);
+        $this->checkEventOwnership($user, $event);
 
         return $user->hasPermission('read:events') && $user->hasOrganization($event->organization_id);
     }
@@ -41,9 +38,16 @@ class EventPolicy extends AbstractPolicy
      */
     public function create(User $user, array $args): bool
     {
-        $this->checkPulseMembership(user: $user, args: $args, model: Pulse::class);
-
         return $user->hasPermission('create:events') && $user->hasOrganization($args['organization_id']);
+    }
+
+    /**
+     * Determine whether the user can list events they attend across an organization.
+     * Used by myAttendeeEvents query — no pulse membership required.
+     */
+    public function viewAttendeeEvents(User $user, array $args): bool
+    {
+        return $user->hasPermission('read:events') && $user->hasOrganization($args['organizationId']);
     }
 
     public function massCreate(User $user, array $args): bool
@@ -78,15 +82,12 @@ class EventPolicy extends AbstractPolicy
             return throw new Error('Event not found!');
         }
 
-        $this->checkPulseMembership(user: $user, args: [
-            'pulse_id' => $event->pulse_id,
-        ], model: Pulse::class);
-
         return $user->hasPermission('update:events') && $user->hasOrganization($event->organization_id);
     }
 
     /**
      * Determine whether the user can delete a specific event.
+     * Uses event_owners to check ownership via User or Pulse membership.
      */
     public function delete(User $user, array $args, ?Event $event = null): bool
     {
@@ -95,10 +96,53 @@ class EventPolicy extends AbstractPolicy
             return throw new Error('Event not found!');
         }
 
-        $this->checkPulseMembership(user: $user, args: [
-            'pulse_id' => $event->pulse_id,
-        ], model: Pulse::class);
+        $this->checkEventOwnership($user, $event);
 
         return $user->hasPermission('delete:events') && $user->hasOrganization($event->organization_id);
+    }
+
+    /**
+     * Check that the user owns the event, either directly (as a User owner)
+     * or via membership in a Pulse that owns the event.
+     */
+    private function checkEventOwnership(User $user, Event $event): bool
+    {
+        // Check if user is a direct owner
+        $isDirectOwner = $event->eventOwner()
+            ->where('entity_type', User::class)
+            ->where('entity_id', $user->id)
+            ->exists();
+
+        if ($isDirectOwner) {
+            return true;
+        }
+
+        // Check if user is a member of any pulse that owns the event
+        $ownerPulseIds = $event->eventOwner()
+            ->where('entity_type', Pulse::class)
+            ->pluck('entity_id');
+
+        if ($ownerPulseIds->isEmpty()) {
+            // Fallback: if no event_owners exist yet (legacy data), check the old pulse_id column
+            if ($event->pulse_id) {
+                $this->checkPulseMembership(user: $user, args: [
+                    'pulse_id' => $event->pulse_id,
+                ], model: Pulse::class);
+
+                return true;
+            }
+
+            throw new Error('Event has no owners');
+        }
+
+        $isMemberOfOwnerPulse = $user->pulseMemberships()
+            ->whereIn('pulse_id', $ownerPulseIds)
+            ->exists();
+
+        if (! $isMemberOfOwnerPulse) {
+            throw new Error('User is not member of the given pulse');
+        }
+
+        return true;
     }
 }

@@ -47,6 +47,7 @@
 #import organizations.graphql
 #import pulse.graphql
 #import pulse-member.graphql
+#import recurring-event.graphql
 #import reply-team-thread.graphql
 #import saved-message.graphql
 #import scout.graphql
@@ -145,6 +146,12 @@ type Query @guard {
             @rename(attribute: "event_id")
             @rules(apply: ["min:36", "max:36", "exists:events,id"])
             @where(key: "event_id", operator: "=")
+
+        "Filters by event instance ID."
+        eventInstanceId: String
+            @rename(attribute: "event_instance_id")
+            @rules(apply: ["min:36", "max:36", "exists:event_instances,id"])
+            @where(key: "event_instance_id", operator: "=")
     ): [Actionable!]!
         @canModel(
             ability: "viewAny"
@@ -209,6 +216,12 @@ type Query @guard {
             @rename(attribute: "event_id")
             @rules(apply: ["min:36", "max:36", "exists:events,id"])
             @where(key: "event_id", operator: "=")
+
+        "Filters by event instance ID."
+        eventInstanceId: String
+            @rename(attribute: "event_instance_id")
+            @rules(apply: ["min:36", "max:36", "exists:event_instances,id"])
+            @where(key: "event_instance_id", operator: "=")
     ): [Agenda!]!
         @canModel(
             ability: "viewAny"
@@ -489,6 +502,12 @@ type Query @guard {
             @rename(attribute: "event_id")
             @rules(apply: ["min:36", "max:36", "exists:events,id"])
             @where(key: "event_id", operator: "=")
+
+        "Filters by event instance ID."
+        eventInstanceId: String
+            @rename(attribute: "event_instance_id")
+            @rules(apply: ["min:36", "max:36", "exists:event_instances,id"])
+            @where(key: "event_instance_id", operator: "=")
     ): [Checklist!]!
         @canModel(
             ability: "viewAny"
@@ -695,6 +714,15 @@ type Query @guard {
             model: "App\\Models\\EventInstance"
         )
         @field(resolver: "App\\GraphQL\\Queries\\EventInstancesQuery")
+
+    paginatedEventInstances(input: EventsInput! @spread): PaginatedEventInstances!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\EventInstance"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\PaginatedEventInstancesQuery")
 
     "The fireflies webhook url, requires pulseId"
     fireFliesWebhookUrl(
@@ -2047,6 +2075,21 @@ type Query @guard {
         )
         @find
 
+    "Find a single event instance by ID."
+    eventInstance(
+        "Search by primary key."
+        eventInstanceId: ID!
+            @rules(apply: ["required", "min:36", "max:36", "exists:event_instances,id"])
+            @where(key: "id", operator: "=")
+    ): EventInstance
+        @guard
+        @canModel(
+            ability: "view"
+            injectArgs: true
+            model: "App\\Models\\EventInstance"
+        )
+        @find
+
     "List events with filters and pagination."
     events(input: EventsInput! @spread): PaginatedEvents!
         @guard
@@ -2056,6 +2099,40 @@ type Query @guard {
             model: "App\\Models\\Event"
         )
         @field(resolver: "App\\GraphQL\\Queries\\EventsQuery")
+
+    """
+    Get all events with meeting recordings that the current user can access.
+    Returns events where user is a member of the pulse and event has a dataSource.
+    """
+    myEventsWithRecordings(input: MyEventsWithRecordingsInput! @spread): PaginatedEvents!
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\MyEventsWithRecordingsQuery")
+
+    """
+    Get all upcoming events that the current user can access across all pulses.
+    Returns events where user is a member of the pulse, ordered by start_at ascending.
+    """
+    myUpcomingEvents(input: MyUpcomingEventsInput! @spread): PaginatedEvents!
+        @guard
+        @field(resolver: "App\\GraphQL\\Queries\\MyUpcomingEventsQuery")
+
+    """
+    Get events where the authenticated user is an attendee.
+    Used by the Pulse Manager modal to list meetings the user can add to a pulse.
+    Optionally excludes events already added to the specified pulse.
+    """
+    myAttendeeEvents(
+        input: MyAttendeeEventsInput! @spread
+    ): PaginatedEvents!
+        @guard
+        @canModel(
+            ability: "viewAttendeeEvents"
+            injectArgs: true
+            model: "App\\Models\\Event"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Queries\\MyAttendeeEventsQuery"
+        )
 
     "List notes with filters and pagination."
     paginatedNotes(input: PaginatedNotesInput! @spread): PaginatedNotes!
@@ -2228,8 +2305,6 @@ type Mutation {
             @rules(
                 apply: ["required", "min:36", "max:36", "exists:meetings,id"]
             )
-        eventId: String!
-            @rules(apply: ["required", "min:36", "max:36", "exists:events,id"])
         pulseId: String!
             @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
         organizationId: String!
@@ -2507,6 +2582,65 @@ type Mutation {
             model: "App\\Models\\EventInstance"
         )
         @field(resolver: "App\\GraphQL\\Mutations\\DeleteEventInstanceMutation")
+
+    "Add an existing event to a pulse. Creates an EventInstance and EventOwner for the pulse."
+    addEventToPulse(input: AddEventToPulseInput! @spread): EventInstance!
+        @guard
+        @canModel(
+            ability: "addToPulse"
+            injectArgs: true
+            model: "App\\Models\\EventInstance"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\AddEventToPulseMutation"
+        )
+
+    "Creates a new recurring event record from a Google Calendar series."
+    createRecurringEvent(
+        input: CreateRecurringEventInput! @spread
+    ): RecurringEvent!
+        @guard
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\CreateRecurringEventMutation"
+        )
+
+    "Sets up (or updates) a recurring event configuration for a pulse."
+    setupRecurringEventInstance(
+        input: SetupRecurringEventInstanceInput! @spread
+    ): RecurringEventInstanceSetup!
+        @guard
+        @canModel(
+            ability: "create"
+            injectArgs: true
+            model: "App\\Models\\RecurringEventInstanceSetup"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\SetupRecurringEventInstanceMutation"
+        )
+
+    "Removes a recurring event setup for a pulse."
+    removeRecurringEventSetup(setupId: ID!): Boolean!
+        @guard
+        @canModel(
+            ability: "delete"
+            injectArgs: true
+            model: "App\\Models\\RecurringEventInstanceSetup"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\RemoveRecurringEventSetupMutation"
+        )
+
+    "Sets the invite_notetaker flag on a recurring event setup."
+    toggleRecurringEventNotetaker(setupId: ID!, inviteNotetaker: Boolean!): RecurringEventInstanceSetup!
+        @guard
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\RecurringEventInstanceSetup"
+        )
+        @field(
+            resolver: "App\\GraphQL\\Mutations\\ToggleRecurringEventNotetakerMutation"
+        )
 
     "Creates a new checklist."
     createChecklist(input: CreateChecklistInput! @spread): Checklist!

@@ -10,7 +10,7 @@ class NotificationContext extends Model
     public $incrementing = false;
     protected $keyType   = 'string';
     protected $table     = 'notification_context';
-    protected $fillable  = ['notification_id', 'summary_id', 'task_id'];
+    protected $fillable  = ['notification_id', 'summary_id', 'task_id', 'team_message_id', 'topic_id'];
 
     protected static function boot(): void
     {
@@ -37,5 +37,10 @@ class NotificationContext extends Model
     public function task()
     {
         return $this->belongsTo(Task::class, 'task_id');
+    }
+
+    public function teamMessage()
+    {
+        return $this->belongsTo(TeamMessage::class, 'team_message_id');
     }
 }

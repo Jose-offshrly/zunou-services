@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\GraphQL\Mutations;
 
 use App\Actions\MeetingSession\CreateMeetingSessionAction;
+use App\Actions\RecurringEvent\SetupRecurringEventInstanceAction;
 use App\DataTransferObjects\MeetingSession\MeetingSessionData;
+use App\DataTransferObjects\RecurringEventInstanceSetupData;
 use App\Enums\MeetingSessionType;
 use App\Enums\MeetingType;
+use App\Jobs\CreateMeetingSessionsForRecurringSeriesJob;
+use App\Models\EventInstance;
 use App\Models\MeetingSession;
 use App\Models\Organization;
 use App\Models\Pulse;
@@ -20,6 +24,7 @@ class CreateMeetingSessionMutation
 {
     public function __construct(
         protected CreateMeetingSessionAction $createMeetingSessionAction,
+        protected SetupRecurringEventInstanceAction $setupRecurringEventInstanceAction,
     ) {
     }
 
@@ -121,11 +126,54 @@ class CreateMeetingSessionMutation
                 meeting_type: isset($args['meeting_type']) ? MeetingType::fromName($args['meeting_type']) : null,
             );
 
-            return $this->createMeetingSessionAction->handle(data: $data);
+            $meetingSession = $this->createMeetingSessionAction->handle(data: $data);
+
+            // Setup recurring event instance if conditions are met
+            if (isset($args['event_instance_id']) && ($args['recurring_invite'] ?? false)) {
+                $this->setupRecurringEventInstance($args['event_instance_id'], $pulse->id);
+                CreateMeetingSessionsForRecurringSeriesJob::dispatch(
+                    $args['event_instance_id'],
+                    $pulse->id,
+                    $meetingSession,
+                    $user->id,
+                );
+            }
+
+            return $meetingSession;
         } catch (\Exception $e) {
             throw new Error(
                 'Failed to create a meeting session: '.$e->getMessage(),
             );
+        }
+    }
+
+    private function setupRecurringEventInstance(string $eventInstanceId, string $pulseId): void
+    {
+        try {
+            // Get the event instance and its associated event
+            $eventInstance = EventInstance::findOrFail($eventInstanceId);
+            $event = $eventInstance->event;
+
+            // Check if the event has a recurring event
+            if (!$event || !$event->recurring_event_id) {
+                return;
+            }
+
+            // Setup the recurring event instance for this pulse
+            $setupData = RecurringEventInstanceSetupData::from([
+                'recurring_event_id' => $event->recurring_event_id,
+                'pulse_id' => $pulseId,
+                'invite_notetaker' => true,
+            ]);
+
+            $this->setupRecurringEventInstanceAction->handle($setupData);
+        } catch (\Exception $e) {
+            // Log error but don't fail the meeting session creation
+            \Illuminate\Support\Facades\Log::error('Failed to setup recurring event instance', [
+                'event_instance_id' => $eventInstanceId,
+                'pulse_id' => $pulseId,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

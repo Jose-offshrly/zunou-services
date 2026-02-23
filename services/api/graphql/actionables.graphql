@@ -5,11 +5,13 @@ type Actionable {
     pulse_id: ID!
     organization_id: ID!
     event_id: ID
+    event_instance_id: ID
     task_id: ID
     status: String
     pulse: Pulse!
     organization: Organization!
     event: Event
+    eventInstance: EventInstance @belongsTo
     task: Task
     created_at: DateTime!
     updated_at: DateTime!
@@ -43,6 +45,12 @@ input CreateActionableInput {
             "max:36"
             "exists:events,id"
         ])
+    event_instance_id: ID
+        @rules(apply: [
+            "min:36" 
+            "max:36"
+            "exists:event_instances,id"
+        ])
     task_id: ID
         @rules(apply: [
             "min:36" 
@@ -66,6 +74,12 @@ input UpdateActionableInput {
             "min:36" 
             "max:36"
             "exists:events,id"
+        ])
+    event_instance_id: ID
+        @rules(apply: [
+            "min:36" 
+            "max:36"
+            "exists:event_instances,id"
         ])
     task_id: ID
         @rules(apply: [

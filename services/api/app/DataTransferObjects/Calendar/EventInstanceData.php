@@ -11,6 +11,7 @@ final class EventInstanceData extends Data
         public readonly string $pulse_id,
         public readonly ?string $local_description = null,
         public readonly ?string $priority = null,
+        public readonly bool $is_recurring = false,
     ) {
     }
 }

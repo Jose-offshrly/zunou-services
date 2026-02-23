@@ -14,6 +14,7 @@ final class ActionableData extends Data
         public readonly string $organization_id,
         public readonly ?string $data_source_id = null,
         public readonly ?string $event_id = null,
+        public readonly ?string $event_instance_id = null,
         public readonly ?string $task_id = null,
         public readonly ?string $status = null,
     ) {

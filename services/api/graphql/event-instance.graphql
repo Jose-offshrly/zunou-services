@@ -4,34 +4,26 @@ type EventInstance {
     pulse_id: ID!
     local_description: String
     priority: String
+    is_recurring_instance: Boolean!
     created_at: DateTime
     updated_at: DateTime
     event: Event
     pulse: Pulse
+    meetingSession: MeetingSession @hasOne
+    already_added: Boolean
+    recurringEventInstanceSetup: RecurringEventInstanceSetup @method
 }
 
 input CreateEventInstanceInput {
     event_id: ID!
-        @rules(apply: [
-            "required"
-            "min:36" 
-            "max:36"
-            "exists:events,id"
-        ])
+        @rules(apply: ["required", "min:36", "max:36", "exists:events,id"])
     pulse_id: ID!
-        @rules(apply: [
-            "required"
-            "min:36" 
-            "max:36"
-            "exists:pulses,id"
-        ])
+        @rules(apply: ["required", "min:36", "max:36", "exists:pulses,id"])
     organization_id: ID!
-        @rules(apply: [
-            "required"
-            "min:36" 
-            "max:36"
-            "exists:organizations,id"
-        ])
+        @rules(
+            apply: ["required", "min:36", "max:36", "exists:organizations,id"]
+        )
     local_description: String
     priority: String
+    add_all_instance: Boolean = false
 }
