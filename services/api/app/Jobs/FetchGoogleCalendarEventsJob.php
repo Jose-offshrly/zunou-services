@@ -28,8 +28,10 @@ class FetchGoogleCalendarEventsJob implements ShouldQueue
 
     public function handle()
     {
-        // Get all users who have Google Calendar refresh tokens
-        $users = User::whereNotNull('google_calendar_refresh_token')->get();
+        // Get all users who have Google Calendar linked and a refresh token
+        $users = User::whereNotNull('google_calendar_refresh_token')
+            ->where('google_calendar_linked', true)
+            ->get();
 
         Log::info('Starting Google Calendar events fetch for all users', [
             'total_users' => $users->count(),
@@ -170,6 +172,21 @@ class FetchGoogleCalendarEventsJob implements ShouldQueue
                     'user_email' => $user->email,
                     'error'      => $e->getMessage(),
                 ]);
+
+                // If the grant is invalid (account deleted, token revoked, etc.),
+                // clear the user's Google Calendar credentials so they are not
+                // retried on every subsequent job run.
+                if (str_contains($e->getMessage(), 'invalid_grant')) {
+                    $user->clearGoogleCalendarCredentials();
+
+                    Log::warning(
+                        'Cleared Google Calendar credentials due to invalid_grant',
+                        [
+                            'user_id'    => $user->id,
+                            'user_email' => $user->email,
+                        ],
+                    );
+                }
 
                 // Continue with next user instead of stopping the entire job
                 continue;
