@@ -88,26 +88,15 @@ class EventInstance extends BaseModel
 
     /**
      * Whether this event instance is part of a recurring series.
+     *
+     * Uses the already-eager-loaded event relationship and checks recurring_event_id
+     * which is populated during Google Calendar sync. This avoids N+1 queries that
+     * would occur with per-row EXISTS checks.
      */
     public function getIsRecurringInstanceAttribute(): bool
     {
         $event = $this->event;
 
-        if (! $event || empty($event->google_event_id)) {
-            return false;
-        }
-
-        // Google recurring instances use a base id with a suffix like "_<timestamp>".
-        $parts = explode('_', $event->google_event_id, 2);
-        if (count($parts) < 2) {
-            return false;
-        }
-
-        $baseEventId = $parts[0];
-
-        return Event::where('organization_id', $event->organization_id)
-            ->where('google_event_id', 'like', $baseEventId . '%')
-            ->where('start_at', '>=', now()->startOfDay())
-            ->exists();
+        return $event && $event->recurring_event_id !== null;
     }
 }

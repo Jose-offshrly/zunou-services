@@ -33,6 +33,7 @@ readonly class EventsQuery
         $query = Event::query()
             ->with([
                 'attendees.user',
+                'recurringEventAttendees.user',
                 'meetingSession',
                 'meetingSession.dataSource',
                 'user',

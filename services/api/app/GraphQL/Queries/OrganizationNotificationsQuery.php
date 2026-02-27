@@ -70,28 +70,25 @@ final readonly class OrganizationNotificationsQuery
             ->pluck('id')
             ->toArray();
 
-        if (empty($latestNotificationIds)) {
-            return Notification::with([
+        return Notification::select(
+            'notifications.*',
+            'nu.read_at as read_at',
+            'nu.is_archived as is_archived',
+        )
+            ->leftJoin('notification_user as nu', function ($join) use ($user) {
+                $join->on('nu.notification_id', '=', 'notifications.id')
+                    ->where('nu.user_id', $user->id);
+            })
+            ->with([
                 'organization',
                 'pulse.members.user',
                 'context',
                 'users',
                 'summary',
             ])
-                ->whereRaw('1 = 0') // Return empty result
-                ->paginate($perPage, ['*'], 'page', $page);
-        }
-
-        return Notification::with([
-            'organization',
-            'pulse.members.user',
-            'context',
-            'users',
-            'summary',
-        ])
-            ->whereIn('id', $latestNotificationIds)
-            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['*'], 'page', $page);
+            ->whereIn('notifications.id', $latestNotificationIds)
+            ->orderByRaw("CASE WHEN notifications.status = 'pending' THEN 0 ELSE 1 END")
+            ->orderBy('notifications.created_at', 'desc')
+            ->paginate(min($perPage, 100), ['*'], 'page', $page);
     }
 }

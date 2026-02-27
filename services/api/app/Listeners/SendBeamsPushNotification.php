@@ -104,13 +104,20 @@ class SendBeamsPushNotification implements ShouldQueue
         // Extract human-readable message preview from Slate.js or plain content
         $body = $this->extractMessagePreview($teamMessage->content);
 
-        $payload = $this->buildFcmPayload($title, $body, [
+        $data = [
             'type'          => 'team_message',
             'messageId'     => (string) $teamMessage->id,
             'pulseId'       => (string) $pulse->id,
             'teamThreadId'  => (string) $teamThread->id,
             'senderId'      => (string) $senderId,
-        ]);
+        ];
+
+        // Include topicId only for topic-scoped messages (avoid empty-string keys on "General")
+        if ($teamMessage->topic_id) {
+            $data['topicId'] = (string) $teamMessage->topic_id;
+        }
+
+        $payload = $this->buildFcmPayload($title, $body, $data);
 
         $this->publishToUsers($recipientIds, $payload);
     }

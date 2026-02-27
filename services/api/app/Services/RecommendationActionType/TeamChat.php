@@ -7,6 +7,8 @@ use App\Models\LiveInsightRecommendationAction;
 use App\Events\TeamMessageSent;
 use App\Models\LiveInsightOutbox;
 use App\Models\LiveInsightRecommendation;
+use App\Models\Note;
+use App\Models\Task;
 use App\Models\TeamMessage;
 use Illuminate\Support\Facades\Log;
 use App\Services\OpenAIService;
@@ -191,7 +193,7 @@ class TeamChat implements RecommendationActionTypeInterface
             'data' => $data,
         ]);
 
-        if (isset($input["error"]) && $input["error"] === true) {
+        if (isset($data["error"]) && $data["error"] === true) {
             self::saveFailedRecommendation(
                 recommendationId: $recommendation->id,
                 user_id: $insight->user_id,
@@ -205,32 +207,36 @@ class TeamChat implements RecommendationActionTypeInterface
         $noteIds = $data['note_ids'] ?? [];
         
         $references = [];
-        
+
         foreach ($taskIds as $taskId) {
-            $references[] = [
-                'type' => 'task',
-                'id' => $taskId,
-            ];
+            $task = Task::find($taskId);
+            if (!$task) {
+                continue;
+            }
+            $title = $task->title !== null && (string) $task->title !== '' ? $task->title : 'Task';
+            $references[] = ['type' => 'task', 'id' => $taskId, 'title' => $title];
         }
-        
+
         foreach ($noteIds as $noteId) {
-            $references[] = [
-                'type' => 'note',
-                'id' => $noteId,
-            ];
+            $note = Note::find($noteId);
+            if (!$note) {
+                continue;
+            }
+            $title = $note->title !== null && (string) $note->title !== '' ? $note->title : 'Note';
+            $references[] = ['type' => 'note', 'id' => $noteId, 'title' => $title];
         }
-        
-        $content = $data['message'];
+
+        $content = $data['message'] ?? '';
         if (!empty($references)) {
             $content = json_encode([
-                'message' => $data['message'],
+                'message' => $data['message'] ?? '',
                 'ui' => [
                     'type' => 'references',
                     'references' => $references,
                 ],
             ]);
         }
-        
+
         $pulseId = $data['pulse_id'] ?? $insight->pulse_id;
 
         $teamThread = \App\Models\TeamThread::where('pulse_id', $pulseId)->first();

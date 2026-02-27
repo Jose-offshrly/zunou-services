@@ -77,29 +77,26 @@ class MeetingSessionPolicy extends AbstractPolicy
         array $args,
         ?MeetingSession $meetingSession = null,
     ): bool {
-        // Get the meeting session ID from the input
-        $meetingSessionId = $args['input']['meetingSessionId'] ?? null;
-        Log::info('MEETING SESSION ID: ' . $meetingSessionId);
-
-        if (! $meetingSessionId) {
-            Log::info('Meeting Session ID not provided in input');
-
-            return false;
-        }
-
-        $meetingSession = MeetingSession::with('attendees.user')->findOrFail(
-            $meetingSessionId,
+        $meetingSession = $this->loadModel(
+            $user,
+            $args['input'] ?? $args,
+            MeetingSession::class,
+            $meetingSession,
         );
 
         if (! $meetingSession) {
-            return throw new Error('Meeting Session not found!');
+            throw new Error('Meeting Session not found!');
         }
 
-        if (! $meetingSession->userIsAttendee($user->id)) {
-            Log::info('Auth user is not an attendee of the meeting session');
-        }
+        $this->checkPulseMembership(
+            user: $user,
+            args: [
+                'pulse_id' => $meetingSession->pulse_id,
+            ],
+            model: Pulse::class,
+        );
 
-        return $user->hasPermission('update:meeting-sessions');
+        return $user->hasPermission('update:meeting-sessions') && $user->hasOrganization($meetingSession->organization_id);
     }
 
     /**

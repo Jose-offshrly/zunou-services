@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Actions\MeetingSession\CreateMeetingSessionAction;
 use App\DataTransferObjects\MeetingSession\MeetingSessionData;
+use App\Enums\MeetingSessionStatus;
 use App\Enums\MeetingSessionType;
 use App\Enums\MeetingType;
 use App\Events\RecurringMeetingSessionsCreated;
@@ -95,7 +96,7 @@ class CreateMeetingSessionsForRecurringSeriesJob implements ShouldQueue
                     external_attendees: null,
                     invite_pulse: true,
                     gcal_meeting_id: $instanceEvent->google_event_id ?? null,
-                    status: $this->meetingSession->status?->value,
+                    status: MeetingSessionStatus::INACTIVE->value,
                     recurring_meeting_id: $event->recurringEvent->google_parent_id ?? null,
                     recurring_invite: true,
                     event_instance_id: $instance->id,

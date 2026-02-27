@@ -6,9 +6,11 @@ use App\Enums\PulseCategory;
 use App\Enums\PulseMemberRole;
 use App\Models\Pulse;
 use App\Models\PulseMember;
+use App\Services\CacheService;
 use GraphQL\Error\Error;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 final readonly class UpdatePulseMemberRoleMutation
 {
@@ -39,17 +41,19 @@ final readonly class UpdatePulseMemberRoleMutation
 
             return $this->updatePulseMember($input);
         } catch (\Exception $e) {
+            if ($e instanceof Error) {
+                throw $e;
+            }
             throw new Error(
                 'Failed to update pulse member: ' . $e->getMessage(),
             );
         }
     }
 
-    private function validateInput(array $input)
+    private function validateInput(array $input): void
     {
         $validator = Validator::make($input, [
-            'role'           => 'required|string',
-            'pulseId'        => 'required|exists:pulses,id',
+            'role'           => ['required', Rule::in(array_column(PulseMemberRole::cases(), 'value'))],
             'userId'         => 'required|exists:users,id',
             'organizationId' => 'required|exists:organizations,id',
         ]);
@@ -62,20 +66,40 @@ final readonly class UpdatePulseMemberRoleMutation
     private function updatePulseMember(array $input): PulseMember
     {
         return DB::transaction(function () use ($input) {
-            if ($input['role'] === PulseMemberRole::OWNER->value) {
-                PulseMember::query()
-                    ->where('pulse_id', $input['pulseId'])
-                    ->where('role', PulseMemberRole::OWNER->value)
-                    ->update(['role' => PulseMemberRole::ADMIN->value]);
-            }
-
             $pulseMember = PulseMember::query()
                 ->wherePulseId($input['pulseId'])
                 ->whereUserId($input['userId'])
-                ->firstOrFail();
+                ->first();
+
+            if (! $pulseMember) {
+                throw new Error('User is not a member of this pulse.');
+            }
+
+            if ($pulseMember->role->value === $input['role']) {
+                return $pulseMember;
+            }
+
+            if (
+                $input['role'] === PulseMemberRole::OWNER->value
+                && $pulseMember->role->value !== PulseMemberRole::OWNER->value
+            ) {
+                $demotedOwners = PulseMember::query()
+                    ->where('pulse_id', $input['pulseId'])
+                    ->where('role', PulseMemberRole::OWNER->value)
+                    ->get();
+
+                $demotedOwners->each(function ($m) {
+                    $m->update(['role' => PulseMemberRole::ADMIN->value]);
+                    CacheService::clearLighthouseCache('PulseMember', $m->id);
+                });
+            }
 
             $pulseMember->role = $input['role'];
             $pulseMember->save();
+
+            // Clear Lighthouse cache BEFORE returning to ensure fresh data in response
+            // (Observer clears cache after commit, which is too late for the response)
+            CacheService::clearLighthouseCache('PulseMember', $pulseMember->id);
 
             return $pulseMember->refresh();
         });

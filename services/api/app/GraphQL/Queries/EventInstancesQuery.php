@@ -4,111 +4,202 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Queries;
 
+use App\Models\Event;
 use App\Models\EventInstance;
 use App\Models\User;
 use Carbon\Carbon;
+use Carbon\Exceptions\InvalidFormatException;
 use GraphQL\Error\Error;
+use GraphQL\Type\Definition\ResolveInfo;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 readonly class EventInstancesQuery
 {
-    public function __invoke($rootValue, array $args): array
+    public function __invoke($rootValue, array $args, $context, ResolveInfo $resolveInfo): array
     {
         $userId = $args['userId'] ?? null;
-        $user   = $userId ? User::find($userId) : Auth::user();
+        $user   = $userId ? User::select(['id', 'timezone'])->find($userId) : Auth::user();
         if (! $user) {
             throw new Error('No user was found');
         }
 
-        $organizationId                  = $args['organizationId'];
-        $pulseId                         = $args['pulseId'];
+        $organizationId = $args['organizationId'] ?? null;
+        $pulseId        = $args['pulseId'] ?? null;
+
+        if (! $organizationId) {
+            throw new Error('organizationId is required');
+        }
+
+        if (! $pulseId) {
+            throw new Error('pulseId is required');
+        }
+
+        $sortOrder = in_array(strtolower($args['sortOrder'] ?? 'asc'), ['asc', 'desc'])
+            ? strtolower($args['sortOrder'] ?? 'asc')
+            : 'asc';
+
+        if (($args['hasMeetingSession'] ?? null) && ($args['hasNoMeetingSession'] ?? null)) {
+            throw new Error('hasMeetingSession and hasNoMeetingSession are mutually exclusive');
+        }
+
+        $eagerLoads = $this->buildEagerLoads($resolveInfo);
+
+        $query = EventInstance::query()
+            ->with($eagerLoads)
+            ->select('event_instances.*')
+            ->whereHas('event', fn ($q) => $q->where('organization_id', $organizationId))
+            ->where('event_instances.pulse_id', $pulseId)
+            ->orderBy(
+                Event::select('start_at')
+                    ->whereColumn('id', 'event_instances.event_id')
+                    ->limit(1),
+                $sortOrder
+            );
+
+        $userTimezone = $user->timezone ?? config('app.timezone');
+
+        $this->applyFilters($query, $args, $userTimezone);
+
+        try {
+            return $query->get()->all();
+        } catch (QueryException $e) {
+            Log::error('EventInstancesQuery: database error', [
+                'organizationId' => $organizationId,
+                'pulseId'        => $pulseId,
+                'error'          => $e->getMessage(),
+            ]);
+
+            throw new Error('Failed to load event instances. Please try again.');
+        }
+    }
+
+    private function buildEagerLoads(ResolveInfo $resolveInfo): array
+    {
+        $fields     = $resolveInfo->getFieldSelection(4);
+        $eagerLoads = [];
+
+        if (isset($fields['event'])) {
+            $eagerLoads[] = 'event:id,name,date,start_at,end_at,location,priority,guests,organization_id,user_id,google_event_id,link,summary,recurring_event_id,pulse_id';
+
+            if (isset($fields['event']['recurringEvent'])) {
+                $eagerLoads[] = 'event.recurringEvent:id';
+            }
+
+            if (isset($fields['event']['attendees']) || isset($fields['event']['participants'])) {
+                $eagerLoads[] = 'event.attendees:id,entity_id,entity_type,user_id';
+                $eagerLoads[] = 'event.attendees.user:id,name,email';
+                $eagerLoads[] = 'event.recurringEventAttendees:id,recurring_event_id,user_id';
+                $eagerLoads[] = 'event.recurringEventAttendees.user:id,name,email';
+            }
+
+            if (isset($fields['event']['user'])) {
+                $eagerLoads[] = 'event.user:id,name,email';
+            }
+
+            if (isset($fields['event']['eventSource'])) {
+                $eagerLoads[] = 'event.eventSource:id,name';
+            }
+
+            if (isset($fields['event']['pulse'])) {
+                $eagerLoads[] = 'event.pulse:id,name';
+            }
+
+            if (isset($fields['event']['organization'])) {
+                $eagerLoads[] = 'event.organization:id,name';
+            }
+
+            if (isset($fields['event']['agendas'])) {
+                $eagerLoads[] = 'event.agendas';
+            }
+
+            if (isset($fields['event']['actionables'])) {
+                $eagerLoads[] = 'event.actionables';
+            }
+
+            if (isset($fields['event']['meetingSession'])) {
+                $eagerLoads[] = 'event.meetingSession:id,event_instance_id,meeting_id,meeting_url,status,name,description,start_at,end_at,invite_pulse,gcal_meeting_id,recurring_invite,data_source_id';
+
+                if (isset($fields['event']['meetingSession']['dataSource'])) {
+                    $eagerLoads[] = 'event.meetingSession.dataSource:id,name';
+                }
+            }
+        }
+
+        if (isset($fields['meetingSession'])) {
+            $eagerLoads[] = 'meetingSession:id,event_instance_id,meeting_id,meeting_url,status,name,description,start_at,end_at,invite_pulse,gcal_meeting_id,recurring_invite,data_source_id';
+
+            if (isset($fields['meetingSession']['dataSource'])) {
+                $eagerLoads[] = 'meetingSession.dataSource:id,name';
+            }
+        }
+
+        if (isset($fields['pulse'])) {
+            $eagerLoads[] = 'pulse:id,name';
+        }
+
+        return $eagerLoads;
+    }
+
+    private function applyFilters($query, array $args, string $userTimezone): void
+    {
         $dateRange                       = $args['dateRange'] ?? null;
-        $search                          = $args['search']    ?? null;
-        $sortOrder                       = strtolower($args['sortOrder'] ?? 'asc');
+        $searchRaw                       = isset($args['search']) ? trim($args['search']) : '';
+        $search                          = $searchRaw !== '' ? $searchRaw : null;
         $hasMeetingSession               = $args['hasMeetingSession']               ?? null;
         $hasMeetingSessionWithDataSource = $args['hasMeetingSessionWithDataSource'] ?? null;
         $hasNoMeetingSession             = $args['hasNoMeetingSession']             ?? null;
 
-        $query = EventInstance::query()
-            ->with([
-                'event.attendees.user',
-                'event.meetingSession',
-                'event.meetingSession.dataSource',
-                'event.user',
-                'event.eventSource',
-                'event.pulse',
-                'event.organization',
-                'event.agendas',
-                'event.actionables',
-                'pulse',
-            ])
-            ->where('pulse_id', $pulseId)
-            ->whereHas('event', function ($q) use ($organizationId) {
-                $q->where('organization_id', $organizationId);
-            })
-            ->orderBy(
-                DB::raw(
-                    "(SELECT start_at FROM events WHERE events.id = event_instances.event_id)"
-                ),
-                $sortOrder,
-            );
-
-        // Apply date range filter through the related event
-        $userTimezone = $user->timezone ?? config('app.timezone');
-
-        // Handle missing or invalid date range
-        $hasValidDateRange = $dateRange && is_array($dateRange) && count($dateRange) > 0;
-
-        if ($hasValidDateRange) {
-            // Handle single date - expand to full day
-            $isSingleDate = count($dateRange) === 1;
-            if ($isSingleDate) {
-                $singleDate = Carbon::parse($dateRange[0], $userTimezone);
-                $dateRange  = [
-                    $singleDate->copy()->startOfDay(),
-                    $singleDate->copy()->endOfDay(),
-                ];
-            }
-
-            // Convert user timezone to UTC for database query
-            $startDateTime = Carbon::parse($dateRange[0], $userTimezone)->utc();
-            $endDateTime   = Carbon::parse($dateRange[1], $userTimezone)->utc();
+        if (! empty($dateRange)) {
+            [$startDateTime, $endDateTime] = $this->resolveDateRangeUtc($dateRange, $userTimezone);
 
             $query->whereHas('event', function ($q) use ($startDateTime, $endDateTime) {
-                $q->where('start_at', '<=', $endDateTime) // starts before range ends
-                    ->where('end_at', '>=', $startDateTime); // ends after range starts
+                $q->where('start_at', '<=', $endDateTime)
+                  ->where('end_at', '>=', $startDateTime);
             });
         }
 
-        // Apply search filter through the related event (case-insensitive)
         if ($search) {
             $query->whereHas('event', function ($q) use ($search) {
-                $q->whereRaw('LOWER(name) LIKE ?', [
-                    '%'.strtolower($search).'%',
-                ])
-                    ->orWhere('date', 'like', '%'.$search.'%');
+                $q->where('name', 'ILIKE', '%'.$search.'%')
+                  ->orWhere('date', 'ILIKE', '%'.$search.'%');
             });
         }
 
-        // Filter: Only event instances that have a related meeting session
         if ($hasMeetingSession) {
             $query->whereHas('meetingSession');
         }
 
-        // Filter: Only event instances that have a meeting session with a data source
         if ($hasMeetingSessionWithDataSource) {
-            $query->whereHas('meetingSession', function ($q) {
-                $q->whereNotNull('data_source_id');
-            });
+            $query->whereHas('meetingSession', fn ($q) => $q->whereNotNull('data_source_id'));
         }
 
-        // Filter: Only event instances without a meeting session
         if ($hasNoMeetingSession) {
             $query->whereDoesntHave('meetingSession');
         }
+    }
 
-        return $query->get()->all();
+    /** @return array{Carbon, Carbon} */
+    private function resolveDateRangeUtc(array $dateRange, string $userTimezone): array
+    {
+        try {
+            if (count($dateRange) === 1) {
+                $singleDate = Carbon::parse($dateRange[0], $userTimezone);
+
+                return [
+                    $singleDate->copy()->startOfDay()->utc(),
+                    $singleDate->copy()->endOfDay()->utc(),
+                ];
+            }
+
+            return [
+                Carbon::parse($dateRange[0], $userTimezone)->utc(),
+                Carbon::parse($dateRange[1], $userTimezone)->utc(),
+            ];
+        } catch (InvalidFormatException $e) {
+            throw new Error('Invalid dateRange: '.$e->getMessage());
+        }
     }
 }
 

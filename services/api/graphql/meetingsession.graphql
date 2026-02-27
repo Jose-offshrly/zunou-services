@@ -101,6 +101,11 @@ type Mutation {
     updateMeetingSessionInvitePulse(
         input: UpdateMeetingSessionInvitePulseInput!
     ): MeetingSession!
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\MeetingSession"
+        )
         @field(
             resolver: "App\\GraphQL\\Mutations\\UpdateMeetingSessionInvitePulseMutation"
         )

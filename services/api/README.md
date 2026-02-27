@@ -13,7 +13,5 @@ make dev
 
 # Linting and formatting
 
--   `make lint` runs linting tests.
--   `make format` will auto-format and run type checks etc
-
-Bump
+- `make lint` runs linting tests.
+- `make format` will auto-format and run type checks etc

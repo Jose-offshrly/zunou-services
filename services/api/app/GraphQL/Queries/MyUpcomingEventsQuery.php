@@ -59,6 +59,7 @@ readonly class MyUpcomingEventsQuery
                 'organization',
                 'meetingSession.dataSource',
                 'attendees.user',
+                'recurringEventAttendees.user',
             ])
             ->where('organization_id', $organizationId)
             ->whereIn('pulse_id', $userPulseIds)

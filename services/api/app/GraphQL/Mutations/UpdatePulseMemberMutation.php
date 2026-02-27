@@ -22,7 +22,12 @@ readonly class UpdatePulseMemberMutation
             $input = $args['input'];
 
             $member = PulseMember::find($input['pulseMemberId']);
-            $data   = new PulseMemberData(
+
+            if (! $member) {
+                throw new Error('Pulse member not found.');
+            }
+
+            $data = new PulseMemberData(
                 job_description: $input['jobDescription'],
                 responsibilities: $input['responsibilities'],
             );
@@ -32,7 +37,10 @@ readonly class UpdatePulseMemberMutation
                 member: $member,
             );
         } catch (\Exception $e) {
-            throw new Error('Failed to update pulse member: ' . $e);
+            if ($e instanceof Error) {
+                throw $e;
+            }
+            throw new Error('Failed to update pulse member: ' . $e->getMessage());
         }
     }
 }

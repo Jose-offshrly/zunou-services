@@ -4,14 +4,12 @@ type EventInstance {
     pulse_id: ID!
     local_description: String
     priority: String
-    is_recurring_instance: Boolean!
     created_at: DateTime
     updated_at: DateTime
     event: Event
     pulse: Pulse
     meetingSession: MeetingSession @hasOne
     already_added: Boolean
-    recurringEventInstanceSetup: RecurringEventInstanceSetup @method
 }
 
 input CreateEventInstanceInput {

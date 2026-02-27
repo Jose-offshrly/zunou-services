@@ -59,6 +59,7 @@ readonly class MyAttendeeEventsQuery
                 'organization',
                 'eventInstances',
                 'attendees.user',
+                'recurringEventAttendees.user',
             ])
             ->where('organization_id', $organizationId)
             ->where(function ($q) use ($userEmail, $user) {

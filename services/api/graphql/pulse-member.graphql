@@ -68,7 +68,7 @@ input UpdatePulseMemberInput {
 }
 
 type PulseMember {
-    id: ID!
+    id: ID! @cacheKey
     pulseId: ID!
     userId: ID!
     user: User! @with(relation: "user")

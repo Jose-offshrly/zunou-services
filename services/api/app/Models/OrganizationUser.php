@@ -75,7 +75,8 @@ class OrganizationUser extends Pivot
     {
         return $query->when($search, function ($q) use ($search) {
             $q->whereHas('user', function ($query) use ($search) {
-                $query->where('name', 'ILIKE', "%{$search}%");
+                $query->where('name', 'ILIKE', "%{$search}%")
+                    ->orWhere('email', 'ILIKE', "%{$search}%");
             });
         });
     }

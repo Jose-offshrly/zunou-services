@@ -10,6 +10,7 @@ use App\Enums\EventSourceType;
 use App\Enums\PulseCategory;
 use App\Events\GoogleCalendarSyncCompleted;
 use App\Facades\Calendar;
+use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\EventInstance;
 use App\Models\EventOwner;
@@ -223,7 +224,7 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
             ->whereNotNull('google_event_id')
             ->exists();
 
-        if ($hasExistingEvents && $this->args['input']['pulseId'] === null) {
+        if ($hasExistingEvents && ($this->args['input']['pulseId'] ?? null) === null) {
             $syncToken = $user->google_calendar_sync_token;
             Log::info('Using sync token for incremental delta sync', [
                 'user_id'        => $user->id,
@@ -534,6 +535,8 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
         $this->ensureEventInstance($syncedEvent, $pulse, $event);
 
         // Sync attendees (entity_type relationship) for the event
+        // Refresh to pick up recurring_event_id set by handleRecurringEvent
+        $syncedEvent->refresh();
         $this->syncEventAttendees($syncedEvent, $event);
 
         if ($wasNewlyCreated) {
@@ -1009,37 +1012,12 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
      */
     private function syncEventAttendees(Event $event, array $googleEventData): void
     {
-        // Collect all attendee emails from Google Calendar event
-        $attendeeEmails = collect($googleEventData['attendees'] ?? [])
-            ->pluck('email')
-            ->map(fn ($email) => strtolower(trim($email)))
-            ->filter()
-            ->unique()
-            ->toArray();
-
-        // Include organizer email if not already in attendees
-        $organizerEmail = $googleEventData['organizer']['email'] ?? null;
-        if ($organizerEmail) {
-            $normalizedOrganizer = strtolower(trim($organizerEmail));
-            if (! in_array($normalizedOrganizer, $attendeeEmails)) {
-                $attendeeEmails[] = $normalizedOrganizer;
-            }
-        }
-
-        // Include creator email if not already in attendees (creator and organizer can differ)
-        $creatorEmail = $googleEventData['creator']['email'] ?? null;
-        if ($creatorEmail) {
-            $normalizedCreator = strtolower(trim($creatorEmail));
-            if (! in_array($normalizedCreator, $attendeeEmails)) {
-                $attendeeEmails[] = $normalizedCreator;
-            }
-        }
+        $attendeeEmails = $this->collectAttendeeEmails($googleEventData);
 
         if (empty($attendeeEmails)) {
             return;
         }
 
-        // Find users in the system matching the attendee emails (case-insensitive)
         $placeholders  = collect($attendeeEmails)->map(fn () => '?')->implode(',');
         $usersInSystem = User::whereRaw("LOWER(email) IN ({$placeholders})", $attendeeEmails)->get();
 
@@ -1047,28 +1025,25 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
             return;
         }
 
-        // Get current attendee user IDs for this event
-        $currentAttendeeUserIds = $event->attendees()->pluck('user_id')->toArray();
+        // Get all current attendees (both morph-based and recurring_event_id-based)
+        $currentAttendeeUserIds = $event->getAllAttendees()->pluck('user_id')->toArray();
         $newAttendeeUserIds     = $usersInSystem->pluck('id')->toArray();
 
-        // Find users to add (in new list but not in current)
-        $usersToAdd = array_diff($newAttendeeUserIds, $currentAttendeeUserIds);
-
-        // Find users to remove (in current but not in new list)
+        $usersToAdd    = array_diff($newAttendeeUserIds, $currentAttendeeUserIds);
         $usersToRemove = array_diff($currentAttendeeUserIds, $newAttendeeUserIds);
 
         // Wrap in transaction to ensure atomicity of delete + insert operations
         DB::transaction(function () use ($event, $usersToRemove, $usersToAdd) {
-            // Remove attendees no longer in the list (forceDelete to avoid soft-delete/firstOrCreate conflict)
+            // Remove attendees no longer in the list from BOTH relationships
             if (! empty($usersToRemove)) {
                 $event->attendees()->whereIn('user_id', $usersToRemove)->forceDelete();
+                if ($event->recurring_event_id) {
+                    $event->recurringEventAttendees()->whereIn('user_id', $usersToRemove)->forceDelete();
+                }
             }
 
-            // Add new attendees (use firstOrCreate to prevent duplicates)
             foreach ($usersToAdd as $userId) {
-                $event->attendees()->firstOrCreate([
-                    'user_id' => $userId,
-                ]);
+                $this->upsertAttendee($event, $userId);
             }
         });
 
@@ -1079,6 +1054,96 @@ class GoogleCalendarEventDeltaSyncJob implements ShouldQueue
                 'removed_count' => count($usersToRemove),
             ]);
         }
+    }
+
+    /**
+     * Collect and normalise all attendee emails from Google event data,
+     * including organizer and creator (creator and organizer can differ).
+     */
+    private function collectAttendeeEmails(array $googleEventData): array
+    {
+        $emails = collect($googleEventData['attendees'] ?? [])->pluck('email');
+
+        foreach (['organizer', 'creator'] as $role) {
+            $email = $googleEventData[$role]['email'] ?? null;
+            if ($email) {
+                $emails->push($email);
+            }
+        }
+
+        return $emails
+            ->map(fn ($e) => strtolower(trim($e)))
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Create or update an attendee record for the given user on the event.
+     * For recurring events, keys on user + series to ensure a single record
+     * across all instances. Migrates existing morph-based attendees to use
+     * recurring_event_id when the event becomes part of a recurring series.
+     *
+     * Invariant: Every attendee must have either (entity_type + entity_id) OR
+     * recurring_event_id set — never both NULL. This is enforced by Attendee model.
+     */
+    private function upsertAttendee(Event $event, string $userId): void
+    {
+        if ($event->recurring_event_id) {
+            // Check if attendee already exists for this recurring series
+            $existingRecurringAttendee = Attendee::where('user_id', $userId)
+                ->where('recurring_event_id', $event->recurring_event_id)
+                ->first();
+
+            if ($existingRecurringAttendee) {
+                return;
+            }
+
+            // Check for existing morph-based attendee for THIS event that needs migration
+            $existingMorphAttendee = Attendee::where('user_id', $userId)
+                ->where('entity_type', Event::class)
+                ->where('entity_id', $event->id)
+                ->whereNull('recurring_event_id')
+                ->first();
+
+            if ($existingMorphAttendee) {
+                $existingMorphAttendee->update([
+                    'recurring_event_id' => $event->recurring_event_id,
+                    'entity_type'        => null,
+                    'entity_id'          => null,
+                ]);
+
+                return;
+            }
+
+            // Create new attendee for recurring series
+            Attendee::create([
+                'user_id'            => $userId,
+                'recurring_event_id' => $event->recurring_event_id,
+                'entity_type'        => null,
+                'entity_id'          => null,
+            ]);
+
+            return;
+        }
+
+        // Non-recurring event: check if morph-based attendee already exists for this event
+        $existingMorphAttendee = Attendee::where('user_id', $userId)
+            ->where('entity_type', Event::class)
+            ->where('entity_id', $event->id)
+            ->first();
+
+        if ($existingMorphAttendee) {
+            return;
+        }
+
+        // Create new morph-based attendee
+        Attendee::create([
+            'user_id'     => $userId,
+            'entity_type' => Event::class,
+            'entity_id'   => $event->id,
+        ]);
     }
 
     /**

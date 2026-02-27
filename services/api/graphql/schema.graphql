@@ -1261,6 +1261,26 @@ type Query @guard {
             resolver: "App\\GraphQL\\Queries\\OrganizationNotificationsQuery"
         )
 
+    "Count of unread notifications for the authenticated user within an organization"
+    unreadOrganizationNotificationsCount(
+        organizationId: String!
+            @rules(
+                apply: [
+                    "min:36"
+                    "max:36"
+                    "required"
+                    "exists:organizations,id"
+                ]
+            )
+    ): Int!
+        @guard
+        @canModel(
+            ability: "viewAny"
+            injectArgs: true
+            model: "App\\Models\\Notification"
+        )
+        @field(resolver: "App\\GraphQL\\Queries\\UnreadOrganizationNotificationsCountQuery")
+
     "List multiple organization users."
     organizationUsers(
         "Filters by name. Accepts SQL LIKE wildcards `%` and `_`."
@@ -4226,6 +4246,11 @@ type Mutation {
     updateMeetingSessionInvitePulse(
         input: UpdateMeetingSessionInvitePulseInput!
     ): MeetingSession!
+        @canModel(
+            ability: "update"
+            injectArgs: true
+            model: "App\\Models\\MeetingSession"
+        )
         @field(
             resolver: "App\\GraphQL\\Mutations\\UpdateMeetingSessionInvitePulseMutation"
         )

@@ -609,6 +609,7 @@ Important:
 **Forbidden Behaviors**
 - Do not cache or repeat prior responses.
 - Do not bypass routing, even for seemingly identical inputs.
+=======
 
 ---
 

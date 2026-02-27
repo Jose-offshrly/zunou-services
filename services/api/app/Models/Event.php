@@ -172,77 +172,73 @@ class Event extends BaseModel implements Participable
 
             return [
                 'name'     => $guestString,
-                'gravatar' => 'https://www.gravatar.com/avatar/'.
-                    md5(strtolower(trim($guestString))).
-                    '?s=200&d=retro',
+                'gravatar' => $this->gravatarUrl(strtolower(trim($guestString))),
             ];
         }, $rawGuests);
     }
 
+    private function gravatarUrl(string $normalizedEmail): string
+    {
+        return 'https://www.gravatar.com/avatar/' . md5($normalizedEmail) . '?s=200&d=retro';
+    }
+
+
     public function getParticipantsAttribute(): array
     {
-        $combined   = [];
-        $usedEmails = []; // Track emails to avoid duplicates
+        $participants = collect();
 
-        // Get attendees from the database relationship
-        // Load with user relationship if not already loaded
-        if (! $this->relationLoaded('attendees')) {
-            $this->load('attendees.user');
-        }
+        // Add attendees (users in the system) - merge both morph and recurring event attendees
+        $allAttendees = $this->getAllAttendees();
 
-        foreach ($this->attendees as $attendee) {
+        // Load users for attendees that don't have them loaded yet
+        $allAttendees->load('user');
+
+        foreach ($allAttendees as $attendee) {
             $user = $attendee->user;
 
             if (! $user) {
                 continue;
             }
 
-            $email = strtolower(trim($user->email));
-
-            // Skip if this email is already used (prevents duplicate attendee records)
-            if (in_array($email, $usedEmails)) {
-                continue;
-            }
-
-            $usedEmails[] = $email;
-
-            $combined[] = [
+            $participants->push([
                 'id'       => $user->id,
                 'name'     => $user->name,
                 'email'    => $user->email,
-                'gravatar' => $user->gravatar,
-            ];
+                'gravatar' => $this->gravatarUrl(strtolower(trim($user->email))),
+            ]);
         }
 
-        // Get guests from the JSON column (already formatted)
-        $guests = $this->guests;
-        foreach ($guests as $guest) {
-            $guestName  = $guest['name'] ?? '';
-            $guestEmail = null;
+        // Add guests not already represented by an attendee
+        // Build lookup sets for both emails and names to handle guest "name" being either
+        $attendeeEmails = $participants->pluck('email')
+            ->filter()
+            ->map(fn ($e) => strtolower(trim($e)))
+            ->flip()
+            ->toArray();
 
-            // Check if guest name looks like an email
-            if (filter_var($guestName, FILTER_VALIDATE_EMAIL)) {
-                $guestEmail      = $guestName;
-                $normalizedEmail = strtolower(trim($guestEmail));
+        $attendeeNames = $participants->pluck('name')
+            ->filter()
+            ->map(fn ($n) => strtolower(trim($n)))
+            ->flip()
+            ->toArray();
 
-                // Skip if this email is already used by an attendee or another guest
-                if (in_array($normalizedEmail, $usedEmails)) {
-                    continue;
-                }
+        foreach ($this->guests as $guest) {
+            $guestIdentifier = strtolower(trim($guest['name'] ?? ''));
 
-                // Track this guest email to prevent duplicates
-                $usedEmails[] = $normalizedEmail;
+            // Guest "name" could be an email or actual name, check both
+            if (isset($attendeeEmails[$guestIdentifier]) || isset($attendeeNames[$guestIdentifier])) {
+                continue;
             }
 
-            $combined[] = [
-                'id'       => null, // Guests don't have user IDs
-                'name'     => null, // Set name to null for guests
-                'email'    => $guestEmail,
-                'gravatar' => $guest['gravatar'],
-            ];
+            $participants->push([
+                'id'       => null,
+                'name'     => $guest['name'] ?? null,
+                'email'    => null,
+                'gravatar' => $guest['gravatar'] ?? null,
+            ]);
         }
 
-        return $combined;
+        return $participants->values()->all();
     }
 
     /**
