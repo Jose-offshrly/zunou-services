@@ -114,13 +114,11 @@ class CreateEventAction
             $event->update(['event_source_id' => $eventSource->id]);
 
             if (isset($data->attendees)) {
-                Log::info('attendees:', $data->attendees);
                 foreach ($data->attendees as $attendee) {
-                    Log::info('attendee:'.$attendee);
                     $user = User::whereEmail($attendee)->first();
 
                     if ($user) {
-                        $event->attendees()->create([
+                        $event->attendees()->firstOrCreate([
                             'user_id' => $user->id,
                         ]);
                     }
