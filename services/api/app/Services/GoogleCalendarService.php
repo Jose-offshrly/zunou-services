@@ -219,6 +219,18 @@ class GoogleCalendarService
                     ],
                 );
 
+                // If the grant is invalid (account deleted, token revoked, etc.),
+                // clear the user's Google Calendar credentials so they are not
+                // retried on every subsequent job run.
+                if ($accessToken['error'] === 'invalid_grant') {
+                    $user->clearGoogleCalendarCredentials();
+
+                    Log::warning(
+                        'Cleared Google Calendar credentials due to invalid_grant',
+                        ['user_id' => $user->id],
+                    );
+                }
+
                 throw new \Exception(
                     "Failed to refresh access token: {$accessToken['error_description']}",
                 );

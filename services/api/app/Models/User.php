@@ -127,6 +127,14 @@ class User extends Authenticatable implements Eventable
         ];
     }
 
+    public function clearGoogleCalendarCredentials(): void
+    {
+        $this->google_calendar_access_token  = null;
+        $this->google_calendar_refresh_token = null;
+        $this->google_calendar_linked        = false;
+        $this->save();
+    }
+
     public function updateGoogleCalendarToken(array $newToken): void
     {
         $updateData = [
