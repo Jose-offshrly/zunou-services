@@ -14,6 +14,10 @@ class FetchUserFireFliesDetailAction
      */
     public function handle(string $api_key, User $user): FireFliesUserData
     {
+        if (empty($api_key)) {
+            throw new Error('API key is required for FireFlies integration.');
+        }
+
         $response = app(CallFireFliesApiAction::class)->handle(
             api_key: $api_key,
             query: $this->query(),
