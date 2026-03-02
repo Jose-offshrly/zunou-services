@@ -37,6 +37,11 @@ final readonly class RefetchIntegrationMutation
             api_key: $integration->api_key
         );
 
+        // Validate the API key
+        if (empty($data->api_key) || !is_string($data->api_key)) {
+            throw new \Exception('Invalid API key');
+        }
+        
         // Process meetings job synchronously
         ProcessFireFliesMeetingsJob::dispatch($data, $user);
 

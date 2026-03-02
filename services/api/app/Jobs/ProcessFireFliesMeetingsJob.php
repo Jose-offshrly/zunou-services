@@ -90,6 +90,11 @@ class ProcessFireFliesMeetingsJob implements ShouldQueue
         } catch (\Exception $e) {
             \Log::error(
                 'Failed to process FireFlies meetings: '.$e->getMessage(),
+                [
+                    'api_key' => $this->data->api_key,
+                    'user_id' => $this->user->id,
+                    'pulse_id' => $this->data->pulse_id,
+                    'exception' => $e,
             );
 
             $integration->update([
