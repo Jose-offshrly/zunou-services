@@ -30,14 +30,17 @@ class FetchFireFliesMeeting extends Command
     public function handle()
     {
         User::whereHas('integrations', function ($query) {
-            $query->where('type', 'fireflies');
+            $query->where('type', 'fireflies')
+                ->where('sync_status', '!=', \App\Enums\SyncStatus::FAILED->value);
         })
-            ->with('integrations')
+            ->with(['integrations' => function ($query) {
+                $query->where('type', 'fireflies')
+                    ->where('sync_status', '!=', \App\Enums\SyncStatus::FAILED->value);
+            }])
             ->get()
             ->each(function ($user) {
                 Log::info('Loop each user');
                 $user->integrations
-                    ->where('type', 'fireflies') // Filter using collection methods
                     ->each(function ($integration) use ($user) {
                         Log::info('Loop integrations and map integration data');
                         $data = new IntegrationData(

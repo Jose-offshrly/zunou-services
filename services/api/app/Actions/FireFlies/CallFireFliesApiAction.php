@@ -21,7 +21,18 @@ class CallFireFliesApiAction
         ])
             ->connectTimeout(15)
             ->timeout(90)
-            ->retry(3, 5000)
+            ->retry(3, 5000, function (\Exception $exception, \Illuminate\Http\Client\PendingRequest $request): bool {
+                // Do not retry on authentication failures — retrying with the same
+                // invalid key will never succeed and only wastes time.
+                if ($exception instanceof \Illuminate\Http\Client\RequestException) {
+                    $errors = $exception->response->json('errors');
+                    if (is_array($errors) && isset($errors[0]['code']) && $errors[0]['code'] === 'auth_failed') {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
             ->post(config('fireflies.api_url'), [
                 'query'     => $query,
                 'variables' => $variables,
@@ -38,9 +49,10 @@ class CallFireFliesApiAction
 
             Log::error('CallFireFliesApiAction: API error occurred', [
                 'message' => $error['message'],
-                'errors' => $errors
+                'code'    => $error['code'] ?? null,
+                'errors'  => $errors,
             ]);
-            
+
             // Return empty array on error
             return [];
         }
