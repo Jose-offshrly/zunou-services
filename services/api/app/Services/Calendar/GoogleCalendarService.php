@@ -32,6 +32,14 @@ class GoogleCalendarService implements CalendarInterface
 
                 $message = 'Google Calendar token has been expired or revoked. User must re-link Google Calendar.';
                 broadcast(new GoogleCalendarTokenRevoked($this->user, $message));
+                    // Mark the user's Google Calendar as unlinked to prevent further attempts
+                    $this->user->update([
+                        'google_calendar_linked' => false,
+                        'google_calendar_access_token' => null,
+                        'google_calendar_refresh_token' => null,
+                        'google_calendar_expires_at' => null,
+                    ]);
+end_of_insert
 
                 throw new GoogleCalendarTokenRevokedException(
                     $message,
