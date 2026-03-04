@@ -116,7 +116,12 @@ class TranscriptQueueWorkerJob implements ShouldQueue
                 // @TODO: uncomment when companion can update status
                 // ->where('companion_status', CompanionStatus::JOINED)
                 ->lockForUpdate()
-                ->firstOrFail();
+                ->first();
+
+            if (! $meetingSession) {
+                Log::warning("MeetingSession not found for meeting_id {$meetingId}, skipping transcription.");
+                return;
+            }
 
             // Skip if this session is already processed
             if (
