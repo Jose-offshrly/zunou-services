@@ -54,9 +54,9 @@ class SyncPulseMemberNotificationsJob implements ShouldQueue
             }
 
             // Get all notification IDs for this pulse
-            $notificationIds = DB::table('notifications')
+            $notificationIds = DB::table('pulses_notifications')
                 ->where('pulse_id', $this->pulseId)
-                ->pluck('id')
+                ->pluck('notification_id')
                 ->toArray();
 
             if (empty($notificationIds)) {
