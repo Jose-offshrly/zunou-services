@@ -43,10 +43,18 @@ class GoogleCalendarService
         // Handle User object or refresh token string
         if ($userOrRefreshToken instanceof User) {
             $this->user = $userOrRefreshToken;
-            $this->initializeWithUser($userOrRefreshToken);
+            try {
+                $this->initializeWithUser($userOrRefreshToken);
+            } catch (\Exception $e) {
+                Log::error('Exception in initializeWithUser in constructor', ['error' => $e->getMessage()]);
+            }
         } elseif (is_string($userOrRefreshToken) && ! empty($userOrRefreshToken)) {
             $this->refreshToken = $userOrRefreshToken;
-            $this->initializeWithRefreshToken($userOrRefreshToken);
+            try {
+                $this->initializeWithRefreshToken($userOrRefreshToken);
+            } catch (\Exception $e) {
+                Log::error('Exception in initializeWithRefreshToken in constructor', ['error' => $e->getMessage()]);
+            }
         }
     }
 
