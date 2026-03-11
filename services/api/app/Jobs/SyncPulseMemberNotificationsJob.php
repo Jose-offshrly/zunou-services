@@ -72,6 +72,7 @@ class SyncPulseMemberNotificationsJob implements ShouldQueue
                     'notification_id' => $notificationId,
                     'user_id' => $this->userId,
                     'read_at' => $now,
+                    'is_archived' => false,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
