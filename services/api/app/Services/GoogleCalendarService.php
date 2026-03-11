@@ -46,8 +46,12 @@ class GoogleCalendarService
             $this->initializeWithUser($userOrRefreshToken);
         } elseif (is_string($userOrRefreshToken) && ! empty($userOrRefreshToken)) {
             $this->refreshToken = $userOrRefreshToken;
-            $this->initializeWithRefreshToken($userOrRefreshToken);
+            $success = $this->initializeWithRefreshToken($userOrRefreshToken);
+            if (! $success) {
+                Log::error('Failed to initialize GoogleCalendarService with refresh token in constructor');
+            }
         }
+    }
     }
 
     /**
@@ -97,7 +101,7 @@ class GoogleCalendarService
     /**
      * Initialize the service with just a refresh token (legacy support)
      */
-    private function initializeWithRefreshToken(string $refreshToken): void
+    private function initializeWithRefreshToken(string $refreshToken): bool
     {
         try {
             $accessToken = $this->client->fetchAccessTokenWithRefreshToken(
@@ -107,16 +111,14 @@ class GoogleCalendarService
             // Check if the response contains an error
             if (isset($accessToken['error'])) {
                 Log::error(
-                    'Error fetching access token with refresh token in constructor',
+                    'Error fetching access token with refresh token',
                     [
                         'error'             => $accessToken['error'],
                         'error_description' => $accessToken['error_description'] ?? 'No description provided',
                     ],
                 );
 
-                throw new \Exception(
-                    "Failed to initialize with refresh token: {$accessToken['error_description']}",
-                );
+                return false;
             }
 
             $this->client->setAccessToken($accessToken);
@@ -124,6 +126,8 @@ class GoogleCalendarService
             Log::info(
                 'Successfully initialized GoogleCalendarService with refresh token',
             );
+
+            return true;
         } catch (\Exception $e) {
             Log::error(
                 'Failed to initialize GoogleCalendarService with refresh token',
@@ -132,9 +136,10 @@ class GoogleCalendarService
                 ],
             );
 
-            throw $e;
+            return false;
         }
     }
+
 
     /**
      * Check if token should be refreshed based on stored expires_at
